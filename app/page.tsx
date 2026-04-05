@@ -70,13 +70,10 @@ export default async function HomePage() {
             <span className="cloud cloud-3" />
             <span className="cloud cloud-4" />
           </div>
-          <div className="splash-layer" aria-hidden="true">
-            <span className="splash-ring splash-ring-1" />
-            <span className="splash-ring splash-ring-2" />
-            <span className="splash-core" />
-            <span className="splash-drop splash-drop-1" />
-            <span className="splash-drop splash-drop-2" />
-            <span className="splash-drop splash-drop-3" />
+          <div className="hero-entry-splash" aria-hidden="true">
+            <span className="hero-entry-plume hero-entry-plume-left" />
+            <span className="hero-entry-plume hero-entry-plume-right" />
+            <span className="hero-entry-flash" />
           </div>
           <div className="absolute inset-0 z-2 bg-[radial-gradient(circle_at_82%_20%,rgba(212,175,55,0.2),transparent_38%),linear-gradient(90deg,rgba(0,0,0,0.5)_0%,rgba(0,0,0,0.18)_45%,rgba(0,0,0,0.6)_100%)]" />
           <div className="absolute inset-x-0 bottom-0 z-2 h-32 bg-linear-to-t from-black/72 to-transparent" />

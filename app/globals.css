@@ -399,77 +399,47 @@ button:disabled {
   animation: cloud-drift-4 34s linear infinite;
 }
 
-.splash-layer {
+.hero-entry-splash {
   position: absolute;
-  left: 62%;
-  bottom: 14%;
-  width: 280px;
-  height: 180px;
+  inset: 0;
   pointer-events: none;
-  z-index: 5;
+  z-index: 9;
+  overflow: hidden;
 }
 
-.splash-core {
+.hero-entry-plume {
   position: absolute;
-  left: 50%;
-  bottom: 18px;
-  width: 42px;
-  height: 42px;
+  top: 10%;
+  width: min(58vw, 760px);
+  height: min(56vh, 520px);
   border-radius: 999px;
-  transform: translateX(-50%);
-  background: radial-gradient(circle, rgba(236, 236, 236, 0.9), rgba(200, 200, 200, 0.26) 55%, rgba(160, 160, 160, 0) 78%);
-  filter: blur(0.6px);
-  animation: splash-core 4.2s ease-out infinite;
-}
-
-.splash-ring {
-  position: absolute;
-  left: 50%;
-  bottom: 22px;
-  width: 28px;
-  height: 16px;
-  border: 2px solid rgba(218, 218, 218, 0.62);
-  border-radius: 999px;
-  transform: translateX(-50%) scale(0.5);
+  filter: blur(8px);
+  background:
+    radial-gradient(circle at 46% 50%, rgba(245, 245, 245, 0.9) 0%, rgba(212, 212, 212, 0.52) 44%, rgba(140, 140, 140, 0) 80%);
   opacity: 0;
+  will-change: transform, opacity;
 }
 
-.splash-ring-1 {
-  animation: splash-ring 4.2s ease-out infinite;
+.hero-entry-plume-left {
+  left: -30%;
+  transform: translateX(-22%) scale(0.76);
+  animation: hero-entry-plume-left 2.8s cubic-bezier(0.14, 0.72, 0.24, 1) forwards;
 }
 
-.splash-ring-2 {
-  animation: splash-ring 4.2s ease-out infinite;
-  animation-delay: 0.7s;
+.hero-entry-plume-right {
+  right: -30%;
+  transform: translateX(22%) scale(0.76);
+  animation: hero-entry-plume-right 2.8s cubic-bezier(0.14, 0.72, 0.24, 1) forwards;
 }
 
-.splash-drop {
+.hero-entry-flash {
   position: absolute;
-  bottom: 34px;
+  inset: 16% 26%;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(238, 238, 238, 0.88), rgba(184, 184, 184, 0.1) 70%, rgba(120, 120, 120, 0) 85%);
+  background: radial-gradient(circle, rgba(230, 230, 230, 0.36), rgba(180, 180, 180, 0.18) 45%, rgba(120, 120, 120, 0) 76%);
   opacity: 0;
-}
-
-.splash-drop-1 {
-  left: 48%;
-  width: 14px;
-  height: 14px;
-  animation: splash-drop-1 4.2s ease-out infinite;
-}
-
-.splash-drop-2 {
-  left: 53%;
-  width: 11px;
-  height: 11px;
-  animation: splash-drop-2 4.2s ease-out infinite;
-}
-
-.splash-drop-3 {
-  left: 44%;
-  width: 10px;
-  height: 10px;
-  animation: splash-drop-3 4.2s ease-out infinite;
+  filter: blur(10px);
+  animation: hero-entry-flash 1.8s ease-out forwards;
 }
 
 @keyframes reveal-up {
@@ -535,78 +505,51 @@ button:disabled {
   }
 }
 
-@keyframes splash-core {
-  0%,
-  100% {
-    transform: translateX(-50%) scale(0.7);
-    opacity: 0;
-  }
-  12% {
-    transform: translateX(-50%) scale(1);
-    opacity: 0.78;
-  }
-  40% {
-    transform: translateX(-50%) scale(1.25);
-    opacity: 0.2;
-  }
-}
-
-@keyframes splash-ring {
+@keyframes hero-entry-plume-left {
   0% {
-    transform: translateX(-50%) scale(0.45);
     opacity: 0;
+    transform: translateX(-24%) scale(0.74);
   }
-  10% {
-    opacity: 0.65;
+  15% {
+    opacity: 0.98;
+  }
+  48% {
+    opacity: 0.62;
   }
   100% {
-    transform: translateX(-50%) scale(4.4);
     opacity: 0;
+    transform: translateX(34%) scale(1.2);
   }
 }
 
-@keyframes splash-drop-1 {
-  0%,
+@keyframes hero-entry-plume-right {
+  0% {
+    opacity: 0;
+    transform: translateX(24%) scale(0.74);
+  }
+  15% {
+    opacity: 0.98;
+  }
+  48% {
+    opacity: 0.62;
+  }
   100% {
-    transform: translate(0, 0) scale(0.7);
     opacity: 0;
-  }
-  18% {
-    opacity: 0.78;
-  }
-  55% {
-    transform: translate(-20px, -78px) scale(1.1);
-    opacity: 0;
+    transform: translateX(-34%) scale(1.2);
   }
 }
 
-@keyframes splash-drop-2 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(0.7);
+@keyframes hero-entry-flash {
+  0% {
     opacity: 0;
+    transform: scale(0.82);
   }
   18% {
-    opacity: 0.72;
+    opacity: 0.62;
   }
-  58% {
-    transform: translate(26px, -68px) scale(1.08);
-    opacity: 0;
-  }
-}
-
-@keyframes splash-drop-3 {
-  0%,
   100% {
-    transform: translate(0, 0) scale(0.7);
     opacity: 0;
-  }
-  18% {
-    opacity: 0.68;
-  }
-  60% {
-    transform: translate(-34px, -56px) scale(1.02);
-    opacity: 0;
+    transform: scale(1.06);
   }
 }
 
@@ -620,10 +563,15 @@ button:disabled {
     opacity: 0.68;
   }
 
-  .splash-layer {
-    left: 54%;
-    bottom: 16%;
-    transform: scale(0.76);
+  .hero-entry-plume {
+    top: 18%;
+    width: min(74vw, 500px);
+    height: min(42vh, 300px);
+    filter: blur(7px);
+  }
+
+  .hero-entry-flash {
+    inset: 22% 18%;
   }
 }
 
@@ -642,10 +590,13 @@ button:disabled {
     opacity: 0.2;
   }
 
-  .splash-core,
-  .splash-ring,
-  .splash-drop {
+  .hero-entry-plume {
     animation: none;
-    opacity: 0.12;
+    opacity: 0.26;
+  }
+
+  .hero-entry-flash {
+    animation: none;
+    opacity: 0.16;
   }
 }

@@ -592,7 +592,7 @@ export function MusicPlayer({ albums, tracks, defaultAlbumId, title = "ATTA Play
   }, [queue, queueSearch]);
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-black/60 p-5 shadow-[0_0_60px_rgba(212,175,55,0.12)] backdrop-blur md:p-7">
+    <section className="rounded-3xl border border-white/12 bg-[linear-gradient(180deg,rgba(0,0,0,0.76),rgba(0,0,0,0.62))] p-5 shadow-[0_0_70px_rgba(212,175,55,0.16)] backdrop-blur-md md:p-7">
       <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <div className="relative h-12 w-12 overflow-hidden rounded-full border border-gold-500/40 bg-black">
@@ -607,7 +607,7 @@ export function MusicPlayer({ albums, tracks, defaultAlbumId, title = "ATTA Play
         <div className="flex flex-wrap items-center gap-3">
           <label className="text-xs uppercase tracking-[0.15em] text-zinc-400">Playlist</label>
           <select
-            className="rounded-lg border border-white/20 bg-zinc-900 px-3 py-2 text-sm"
+            className="rounded-lg border border-white/24 bg-zinc-900/92 px-3 py-2 text-sm text-zinc-100"
             value={playlistMode}
             onChange={(event) => updateMode(event.target.value as PlaylistMode)}
           >
@@ -638,7 +638,7 @@ export function MusicPlayer({ albums, tracks, defaultAlbumId, title = "ATTA Play
           <button
             type="button"
             onClick={() => setIsShuffle((prev) => !prev)}
-            className={`rounded border px-2 py-1 text-xs ${
+            className={`rounded border px-2 py-1 text-xs transition ${
               isShuffle ? "border-gold-500/70 text-gold-300" : "border-white/20 text-zinc-200"
             }`}
           >
@@ -647,7 +647,7 @@ export function MusicPlayer({ albums, tracks, defaultAlbumId, title = "ATTA Play
           <button
             type="button"
             onClick={cycleRepeatMode}
-            className={`rounded border px-2 py-1 text-xs ${
+            className={`rounded border px-2 py-1 text-xs transition ${
               repeatMode !== "off" ? "border-gold-500/70 text-gold-300" : "border-white/20 text-zinc-200"
             }`}
           >
@@ -656,7 +656,7 @@ export function MusicPlayer({ albums, tracks, defaultAlbumId, title = "ATTA Play
           <button
             type="button"
             onClick={restoreSession}
-            className="rounded border border-white/20 px-2 py-1 text-xs text-zinc-200"
+            className="rounded border border-white/20 px-2 py-1 text-xs text-zinc-200 transition hover:border-gold-500/50"
           >
             Restore Session
           </button>
