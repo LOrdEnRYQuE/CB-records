@@ -1,9 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { SiteHeader } from "@/components/public/site-header";
+import { DesktopSplitNav } from "@/components/public/desktop-split-nav";
+import { MobileNavMenu } from "@/components/public/mobile-nav-menu";
 import { SiteFooter } from "@/components/public/site-footer";
-import { getArtistProfile, getFeaturedAlbums, getPlayerLibrary } from "@/lib/queries/public";
+import { getSessionContext } from "@/lib/auth/session";
+import { getFeaturedAlbums } from "@/lib/queries/public";
 
 export const metadata: Metadata = {
   title: "Home",
@@ -16,29 +18,70 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [artist, albums, player] = await Promise.all([
-    getArtistProfile(),
+  const [{ user }, albums] = await Promise.all([
+    getSessionContext(),
     getFeaturedAlbums(),
-    getPlayerLibrary(),
   ]);
 
   return (
     <div className="page-shell flex min-h-screen flex-col">
-      <SiteHeader />
+      <div className="relative z-40 flex items-center justify-between px-4 pb-2 pt-4 md:hidden">
+        <Link
+          href="/"
+          className="group inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-full"
+          aria-label="Cartieru Bradet"
+        >
+          <Image
+            src="/LOGO Cartieru` Bradet.png"
+            alt="Logo"
+            width={40}
+            height={40}
+            className="h-9.5 w-9.5 rounded-full object-contain p-0.5 brightness-125 contrast-125 saturate-110 transition group-hover:scale-105"
+          />
+        </Link>
+        <MobileNavMenu isAuthenticated={Boolean(user)} />
+      </div>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-6 pb-14 pt-6">
-        <section className="relative left-1/2 h-[78vh] min-h-[520px] w-screen -translate-x-1/2 overflow-hidden border-y border-white/10">
+      <div className="relative z-40 hidden pt-2 md:block">
+        <DesktopSplitNav isAuthenticated={Boolean(user)} />
+      </div>
+
+      <main className="mx-auto w-full max-w-7xl flex-1 px-6 pb-14 pt-0">
+        <section className="relative left-1/2 h-[88vh] min-h-[700px] w-screen -translate-x-1/2 overflow-hidden border-b border-white/10 md:h-screen md:min-h-[860px]">
           <video
             autoPlay
             muted
             loop
             playsInline
-            className="absolute inset-0 h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover opacity-25"
           >
             <source src="/Cinematic_Logo_Animation_Ready.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-r from-black/88 via-black/62 to-black/78" />
-          <div className="absolute bottom-4 right-4 z-20">
+          <Image
+            src="/Banners.png"
+            alt="Cartieru' Bradet hero banner"
+            fill
+            priority
+            className="absolute inset-0 object-cover object-center opacity-95"
+          />
+          <div className="cloud-sky" aria-hidden="true">
+            <span className="cloud cloud-1" />
+            <span className="cloud cloud-2" />
+            <span className="cloud cloud-3" />
+            <span className="cloud cloud-4" />
+          </div>
+          <div className="splash-layer" aria-hidden="true">
+            <span className="splash-ring splash-ring-1" />
+            <span className="splash-ring splash-ring-2" />
+            <span className="splash-core" />
+            <span className="splash-drop splash-drop-1" />
+            <span className="splash-drop splash-drop-2" />
+            <span className="splash-drop splash-drop-3" />
+          </div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_20%,rgba(212,175,55,0.2),transparent_38%),linear-gradient(90deg,rgba(0,0,0,0.5)_0%,rgba(0,0,0,0.18)_45%,rgba(0,0,0,0.6)_100%)]" />
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-black/72 to-transparent" />
+
+          <div className="absolute bottom-4 right-4 z-20 md:bottom-5 md:right-6">
             <Image
               src="/Video watermark.png"
               alt="Video watermark"
@@ -47,35 +90,8 @@ export default async function HomePage() {
               className="h-auto w-24 opacity-80 md:w-32"
             />
           </div>
-          <div className="relative z-10 flex h-full items-center p-6 md:p-10">
-            <div className="space-y-4 reveal-up">
-              <p className="eyebrow">Official Artist Website</p>
-              <h1 className="display-title">{artist.name}</h1>
-              <p className="max-w-2xl text-zinc-200">{artist.bio}</p>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/music" className="btn-gold rounded-full px-5 py-2.5">
-                  Explore Music
-                </Link>
-                <Link href="/contact" className="btn-outline rounded-full px-5 py-2.5">
-                  Bookings
-                </Link>
-              </div>
-              <div className="mt-4 grid max-w-xl grid-cols-3 gap-3">
-                <div className="stat-card">
-                  <p className="text-xs uppercase tracking-widest text-zinc-400">Releases</p>
-                  <p className="mt-1 text-2xl font-black">{albums.length}</p>
-                </div>
-                <div className="stat-card">
-                  <p className="text-xs uppercase tracking-widest text-zinc-400">Playlists</p>
-                  <p className="mt-1 text-2xl font-black">{player.albums.length ? player.albums.length + 1 : 1}</p>
-                </div>
-                <div className="stat-card">
-                  <p className="text-xs uppercase tracking-widest text-zinc-400">Tracks</p>
-                  <p className="mt-1 text-2xl font-black">{player.tracks.length}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+
+          <div className="relative z-10 h-full w-full" />
         </section>
 
         <section className="section-wrap section-split space-y-4 reveal-up reveal-delay-1">

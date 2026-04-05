@@ -18,22 +18,26 @@ export function useTrackLikes(trackIds: string[]) {
       return;
     }
 
-    const params = new URLSearchParams();
-    params.set("deviceId", deviceId);
-    params.set("trackIds", normalizedIds.join(","));
+    try {
+      const params = new URLSearchParams();
+      params.set("deviceId", deviceId);
+      params.set("trackIds", normalizedIds.join(","));
 
-    const response = await fetch(`/api/track-likes?${params.toString()}`, {
-      method: "GET",
-      cache: "no-store",
-    });
+      const response = await fetch(`/api/track-likes?${params.toString()}`, {
+        method: "GET",
+        cache: "no-store",
+      });
 
-    if (!response.ok) {
-      return;
-    }
+      if (!response.ok) {
+        return;
+      }
 
-    const payload = (await response.json()) as { states?: Record<string, LikeState> };
-    if (payload.states) {
-      setLikesByTrack(payload.states);
+      const payload = (await response.json()) as { states?: Record<string, LikeState> };
+      if (payload.states) {
+        setLikesByTrack(payload.states);
+      }
+    } catch {
+      // Ignore transient network failures and keep previous like state.
     }
   }, [deviceId, normalizedIds]);
 
@@ -50,31 +54,35 @@ export function useTrackLikes(trackIds: string[]) {
         return null;
       }
 
-      const response = await fetch("/api/track-likes", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          trackId,
-          deviceId,
-        }),
-      });
+      try {
+        const response = await fetch("/api/track-likes", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            trackId,
+            deviceId,
+          }),
+        });
 
-      if (!response.ok) {
+        if (!response.ok) {
+          return null;
+        }
+
+        const payload = (await response.json()) as { liked: boolean; count: number };
+        setLikesByTrack((prev) => ({
+          ...prev,
+          [trackId]: {
+            liked: payload.liked,
+            count: payload.count,
+          },
+        }));
+
+        return payload;
+      } catch {
         return null;
       }
-
-      const payload = (await response.json()) as { liked: boolean; count: number };
-      setLikesByTrack((prev) => ({
-        ...prev,
-        [trackId]: {
-          liked: payload.liked,
-          count: payload.count,
-        },
-      }));
-
-      return payload;
     },
     [deviceId],
   );
