@@ -52,7 +52,7 @@ export default async function MusicPage() {
                   Apple Music
                 </a>
                 <a
-                  href="https://music.amazon.com/artists/B0FXQK2W2Q/cartieru-bradet"
+                  href="https://music.amazon.com/tracks/B0FXQKQNQX"
                   target="_blank"
                   rel="noreferrer"
                   className="btn-soft rounded-full px-3 py-1.5 text-xs"

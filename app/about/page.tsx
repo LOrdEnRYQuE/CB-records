@@ -51,12 +51,12 @@ export default async function AboutPage() {
                 Apple Music Profile
               </a>
               <a
-                href="https://music.amazon.com/artists/B0FXQK2W2Q/cartieru-bradet"
+                href="https://music.amazon.com/tracks/B0FXQKQNQX"
                 target="_blank"
                 rel="noreferrer"
                 className="btn-soft rounded-full px-4 py-2 text-xs"
               >
-                Amazon Music Profile
+                Amazon Music Release
               </a>
             </div>
             <div className="flex flex-wrap gap-3 pt-1">
