@@ -18,8 +18,14 @@ export async function createSupabaseServerClient() {
         return cookieStore.getAll();
       },
       setAll(cookiesToSet) {
-        for (const cookie of cookiesToSet) {
-          cookieStore.set(cookie.name, cookie.value, cookie.options);
+        try {
+          for (const cookie of cookiesToSet) {
+            cookieStore.set(cookie.name, cookie.value, cookie.options);
+          }
+        } catch {
+          // In some server-render contexts (including Edge/OpenNext), cookies
+          // may be read-only. Ignore writes here and rely on middleware/actions
+          // for cookie persistence.
         }
       },
     },
