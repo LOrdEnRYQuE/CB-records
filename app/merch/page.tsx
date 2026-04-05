@@ -24,7 +24,18 @@ export default async function MerchPage() {
     <div className="page-shell flex min-h-screen flex-col">
       <SiteHeader />
       <main className="mx-auto w-full max-w-7xl flex-1 px-6 pb-14 pt-6">
+        <section className="panel reveal-up rounded-3xl p-6 md:p-10">
+          <p className="eyebrow">Merch</p>
+          <h1 className="display-title mt-2">My Merch</h1>
+          <p className="mt-3 max-w-2xl text-zinc-300">
+            Official drops, limited pieces, and curated items from the ATTA universe.
+            Buy links open trusted partner pages.
+          </p>
+        </section>
+
+        <section className="section-wrap section-split">
         <MerchStorefront products={merch.items} />
+        </section>
       </main>
       <SiteFooter />
     </div>
