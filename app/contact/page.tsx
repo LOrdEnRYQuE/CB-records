@@ -24,6 +24,11 @@ export default function ContactPage() {
           <p className="mb-6 text-zinc-300">
             Use the details below for collaborations, events, and media requests.
           </p>
+          <div className="mb-6 rounded-2xl border border-white/10 bg-black/35 p-4 text-sm text-zinc-300">
+            Latest verified catalog updates: INSZOMNIA (Nov 1, 2025) and 2026 singles
+            including Manifest and Ashes on a halo. For platform placements, include
+            Apple Music, Amazon Music, and InstantShare links in your request.
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="surface-subtle hover-lift rounded-lg p-4">

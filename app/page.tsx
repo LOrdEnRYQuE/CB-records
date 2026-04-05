@@ -93,7 +93,10 @@ export default async function HomePage() {
 
         <section className="section-wrap section-split space-y-4 reveal-up reveal-delay-1">
           <div className="flex items-end justify-between">
-            <h2 className="section-title">Featured Releases</h2>
+            <div>
+              <h2 className="section-title">Featured Releases</h2>
+              <p className="mt-1 text-xs text-zinc-400">Verified on Apple Music and Amazon Music (2025-2026)</p>
+            </div>
             <Link href="/music" className="btn-soft rounded-md px-3 py-1.5 text-sm">
               View all
             </Link>

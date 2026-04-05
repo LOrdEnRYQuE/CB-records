@@ -42,6 +42,32 @@ export default async function MusicPage() {
               <p className="mt-3 max-w-2xl text-zinc-300">
                 Official releases and promos are listed below. Pick a release or run the full ATTA playlist.
               </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a
+                  href="https://music.apple.com/ro/album/inszomnia/1851818985?l=ro"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-soft rounded-full px-3 py-1.5 text-xs"
+                >
+                  Apple Music
+                </a>
+                <a
+                  href="https://music.amazon.com/artists/B0FXQK2W2Q/cartieru-bradet"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-soft rounded-full px-3 py-1.5 text-xs"
+                >
+                  Amazon Music
+                </a>
+                <a
+                  href="https://distrokid.com/instantshare/0dWGu4"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-soft rounded-full px-3 py-1.5 text-xs"
+                >
+                  InstantShare
+                </a>
+              </div>
 
               <div className="mt-6 grid max-w-xl grid-cols-3 gap-3">
                 <div className="stat-card">
@@ -82,18 +108,18 @@ export default async function MusicPage() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-sm font-semibold text-zinc-200">Promos</p>
+                  <p className="mb-2 text-sm font-semibold text-zinc-200">Recent Singles</p>
                   <div className="space-y-1.5">
-                    {promoTracks.length ? (
-                      promoPreview.map((track) => (
-                        <p key={track.id} className="text-xs text-zinc-300">
-                          {track.trackNumber ? `${track.trackNumber}. ` : ""}{track.title}
-                          <span className="text-zinc-500"> · {track.albumTitle}</span>
-                        </p>
-                      ))
-                    ) : (
-                      <p className="text-xs text-zinc-500">No promo tracks yet. Add one in the admin panel.</p>
-                    )}
+                    <p className="text-xs text-zinc-300">Manifest (Mar 19, 2026)</p>
+                    <p className="text-xs text-zinc-300">Ashes on a halo (Mar 19, 2026)</p>
+                    <p className="text-xs text-zinc-300">I don&apos;t care (Mar 19, 2026)</p>
+                    <p className="text-xs text-zinc-300">Simleu (Oct 24, 2025)</p>
+                    {promoTracks.length ? promoPreview.map((track) => (
+                      <p key={track.id} className="text-xs text-zinc-500">
+                        {track.trackNumber ? `${track.trackNumber}. ` : ""}{track.title}
+                        <span className="text-zinc-600"> · {track.albumTitle}</span>
+                      </p>
+                    )) : null}
                   </div>
                 </div>
               </div>

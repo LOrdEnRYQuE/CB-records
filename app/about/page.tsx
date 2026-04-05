@@ -33,6 +33,32 @@ export default async function AboutPage() {
             <p className="text-zinc-300">
               ATTA AI Records is focused on consistent releases, cinematic visuals, and strong storytelling through music.
             </p>
+            <div className="surface-subtle rounded-2xl p-4 text-sm text-zinc-200">
+              <p className="text-xs uppercase tracking-widest text-gold-500">Verified Release Timeline</p>
+              <ul className="mt-2 space-y-1 text-zinc-300">
+                <li>Nov 1, 2025: INSZOMNIA (7-track album)</li>
+                <li>Oct 24, 2025: Simleu (single)</li>
+                <li>Mar 19, 2026: Manifest, Ashes on a halo, I don&apos;t care (singles)</li>
+              </ul>
+            </div>
+            <div className="flex flex-wrap gap-3 pt-1">
+              <a
+                href="https://music.apple.com/ro/album/inszomnia/1851818985?l=ro"
+                target="_blank"
+                rel="noreferrer"
+                className="btn-soft rounded-full px-4 py-2 text-xs"
+              >
+                Apple Music Profile
+              </a>
+              <a
+                href="https://music.amazon.com/artists/B0FXQK2W2Q/cartieru-bradet"
+                target="_blank"
+                rel="noreferrer"
+                className="btn-soft rounded-full px-4 py-2 text-xs"
+              >
+                Amazon Music Profile
+              </a>
+            </div>
             <div className="flex flex-wrap gap-3 pt-1">
               <Link href="/music" className="btn-gold rounded-full px-5 py-2.5 text-sm">
                 Explore Music
