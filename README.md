@@ -2,6 +2,24 @@
 
 Production-ready foundation for the official **Cartieru' Bradet / ATTA AI Records** website.
 
+## Branding
+
+### Logo
+
+![ATTA Logo](public/LOGO%20Cartieru%60%20Bradet.png)
+
+### Key visuals
+
+![Main Banner](public/Banners.png)
+![Profile](public/Profile.png)
+![Album Cover](public/final-album--cover.png)
+
+## Released Music
+
+- Official music page: `/music`
+- Featured release page example: `/music/[slug]`
+- DistroKid Instant Share: https://distrokid.com/instantshare/0dWGu4
+
 ## Stack
 
 - Next.js (App Router, TypeScript)
