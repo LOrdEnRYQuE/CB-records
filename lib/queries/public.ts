@@ -20,84 +20,96 @@ function parseFeaturedAlbumId(value: unknown): string | null {
 }
 
 export async function getArtistProfile() {
-  const supabase = await createSupabaseServerClient();
+  try {
+    const supabase = await createSupabaseServerClient();
 
-  if (!supabase) {
+    if (!supabase) {
+      return fallbackArtist;
+    }
+
+    const { data } = await supabase
+      .from("artists")
+      .select("name, slug, bio, hero_image_url")
+      .eq("is_active", true)
+      .limit(1)
+      .maybeSingle();
+
+    if (!data) {
+      return fallbackArtist;
+    }
+
+    return {
+      name: data.name,
+      slug: data.slug,
+      bio: data.bio,
+      heroImageUrl: data.hero_image_url,
+    };
+  } catch {
     return fallbackArtist;
   }
-
-  const { data } = await supabase
-    .from("artists")
-    .select("name, slug, bio, hero_image_url")
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle();
-
-  if (!data) {
-    return fallbackArtist;
-  }
-
-  return {
-    name: data.name,
-    slug: data.slug,
-    bio: data.bio,
-    heroImageUrl: data.hero_image_url,
-  };
 }
 
 export async function getFeaturedAlbums() {
-  const supabase = await createSupabaseServerClient();
+  try {
+    const supabase = await createSupabaseServerClient();
 
-  if (!supabase) {
+    if (!supabase) {
+      return fallbackAlbums;
+    }
+
+    const { data } = await supabase
+      .from("albums")
+      .select("id, title, slug, cover_image_url, description, release_date")
+      .eq("is_published", true)
+      .eq("is_featured", true)
+      .order("release_date", { ascending: false });
+
+    if (!data || data.length === 0) {
+      return fallbackAlbums;
+    }
+
+    return data.map((album) => ({
+      id: album.id,
+      title: album.title,
+      slug: album.slug,
+      coverImageUrl: album.cover_image_url,
+      description: album.description,
+      releaseDate: album.release_date,
+    }));
+  } catch {
     return fallbackAlbums;
   }
-
-  const { data } = await supabase
-    .from("albums")
-    .select("id, title, slug, cover_image_url, description, release_date")
-    .eq("is_published", true)
-    .eq("is_featured", true)
-    .order("release_date", { ascending: false });
-
-  if (!data || data.length === 0) {
-    return fallbackAlbums;
-  }
-
-  return data.map((album) => ({
-    id: album.id,
-    title: album.title,
-    slug: album.slug,
-    coverImageUrl: album.cover_image_url,
-    description: album.description,
-    releaseDate: album.release_date,
-  }));
 }
 
 export async function getPublishedAlbums() {
-  const supabase = await createSupabaseServerClient();
+  try {
+    const supabase = await createSupabaseServerClient();
 
-  if (!supabase) {
+    if (!supabase) {
+      return fallbackAlbums;
+    }
+
+    const { data } = await supabase
+      .from("albums")
+      .select("id, title, slug, cover_image_url, description, release_date")
+      .eq("is_published", true)
+      .order("release_date", { ascending: false });
+
+    if (!data || data.length === 0) {
+      return fallbackAlbums;
+    }
+
+    return data.map((album) => ({
+      id: album.id,
+      title: album.title,
+      slug: album.slug,
+      coverImageUrl: album.cover_image_url,
+      description: album.description,
+      releaseDate: album.release_date,
+    }));
+  } catch {
     return fallbackAlbums;
   }
-
-  const { data } = await supabase
-    .from("albums")
-    .select("id, title, slug, cover_image_url, description, release_date")
-    .eq("is_published", true)
-    .order("release_date", { ascending: false });
-
-  if (!data || data.length === 0) {
-    return fallbackAlbums;
-  }
-
-  return data.map((album) => ({
-    id: album.id,
-    title: album.title,
-    slug: album.slug,
-    coverImageUrl: album.cover_image_url,
-    description: album.description,
-    releaseDate: album.release_date,
-  }));
 }
 
 export async function getAlbumBySlug(slug: string) {
@@ -166,33 +178,37 @@ export async function getAlbumBySlug(slug: string) {
 }
 
 export async function getPlayerLibrary() {
-  const supabase = await createSupabaseServerClient();
+  const fallbackLibrary = {
+    featuredAlbumId: null as string | null,
+    albums: fallbackAlbums.map((album) => ({
+      id: album.id,
+      title: album.title,
+      slug: album.slug,
+      coverImageUrl: album.coverImageUrl,
+    })),
+    tracks: fallbackTracks.map((track) => {
+      const isStream = isPlayableAudioUrl(track.audioUrl);
+      const audioSourceType: "stream" | "external" = isStream ? "stream" : "external";
+      return {
+        audioSourceType,
+        streamUrl: isStream ? track.audioUrl : null,
+        releaseUrl: isStream ? null : track.audioUrl,
+        id: track.id,
+        title: track.title,
+        albumId: track.albumId,
+        albumTitle: track.albumTitle,
+        trackNumber: track.trackNumber,
+        audioUrl: isStream ? track.audioUrl : null,
+      };
+    }),
+  };
 
-  if (!supabase) {
-    return {
-      albums: fallbackAlbums.map((album) => ({
-        id: album.id,
-        title: album.title,
-        slug: album.slug,
-        coverImageUrl: album.coverImageUrl,
-      })),
-      tracks: fallbackTracks.map((track) => {
-        const isStream = isPlayableAudioUrl(track.audioUrl);
-        const audioSourceType: "stream" | "external" = isStream ? "stream" : "external";
-        return {
-          audioSourceType,
-          streamUrl: isStream ? track.audioUrl : null,
-          releaseUrl: isStream ? null : track.audioUrl,
-          id: track.id,
-          title: track.title,
-          albumId: track.albumId,
-          albumTitle: track.albumTitle,
-          trackNumber: track.trackNumber,
-          audioUrl: isStream ? track.audioUrl : null,
-        };
-      }),
-    };
-  }
+  try {
+    const supabase = await createSupabaseServerClient();
+
+    if (!supabase) {
+      return fallbackLibrary;
+    }
 
   const [{ data: featuredSetting }, { data: albums }] = await Promise.all([
     supabase.from("site_settings").select("value").eq("key", "player.featured_album_id").maybeSingle(),
@@ -204,32 +220,9 @@ export async function getPlayerLibrary() {
   ]);
   const featuredAlbumId = parseFeaturedAlbumId(featuredSetting?.value);
 
-  if (!albums || albums.length === 0) {
-    return {
-      featuredAlbumId: null as string | null,
-      albums: fallbackAlbums.map((album) => ({
-        id: album.id,
-        title: album.title,
-        slug: album.slug,
-        coverImageUrl: album.coverImageUrl,
-      })),
-      tracks: fallbackTracks.map((track) => {
-        const isStream = isPlayableAudioUrl(track.audioUrl);
-        const audioSourceType: "stream" | "external" = isStream ? "stream" : "external";
-        return {
-          audioSourceType,
-          streamUrl: isStream ? track.audioUrl : null,
-          releaseUrl: isStream ? null : track.audioUrl,
-          id: track.id,
-          title: track.title,
-          albumId: track.albumId,
-          albumTitle: track.albumTitle,
-          trackNumber: track.trackNumber,
-          audioUrl: isStream ? track.audioUrl : null,
-        };
-      }),
-    };
-  }
+    if (!albums || albums.length === 0) {
+      return fallbackLibrary;
+    }
 
   const albumIds = albums.map((album) => album.id);
 
@@ -266,49 +259,52 @@ export async function getPlayerLibrary() {
       ]
     : albums;
 
-  return {
-    featuredAlbumId,
-    albums: orderedAlbums.map((album) => ({
-      id: album.id,
-      title: album.title,
-      slug: album.slug,
-      coverImageUrl: album.cover_image_url,
-    })),
-    tracks: (tracks ?? [])
-      .map((track) => {
-        const isStream = isPlayableAudioUrl(track.audio_url);
-        const links = linksByTrack.get(track.id) ?? [];
-        const hyperFollow = links.find((link) => link.platform.toLowerCase() === "hyperfollow");
-        const externalFromAudio = !isStream && track.audio_url ? track.audio_url : null;
-        const releaseUrl = hyperFollow?.url ?? links[0]?.url ?? externalFromAudio;
+    return {
+      featuredAlbumId,
+      albums: orderedAlbums.map((album) => ({
+        id: album.id,
+        title: album.title,
+        slug: album.slug,
+        coverImageUrl: album.cover_image_url,
+      })),
+      tracks: (tracks ?? [])
+        .map((track) => {
+          const isStream = isPlayableAudioUrl(track.audio_url);
+          const links = linksByTrack.get(track.id) ?? [];
+          const hyperFollow = links.find((link) => link.platform.toLowerCase() === "hyperfollow");
+          const externalFromAudio = !isStream && track.audio_url ? track.audio_url : null;
+          const releaseUrl = hyperFollow?.url ?? links[0]?.url ?? externalFromAudio;
 
-        const audioSourceType: "stream" | "external" = isStream ? "stream" : "external";
+          const audioSourceType: "stream" | "external" = isStream ? "stream" : "external";
 
-        return {
-          id: track.id,
-          title: track.title,
-          albumId: track.album_id,
-          albumTitle: albumById.get(track.album_id)?.title ?? "Unknown Album",
-          trackNumber: track.track_number,
-          audioSourceType,
-          streamUrl: isStream ? track.audio_url : null,
-          releaseUrl: releaseUrl ?? null,
-          audioUrl: isStream ? track.audio_url : null,
-        };
-      })
-      .sort((a, b) => {
-        if (!featuredAlbumId) {
+          return {
+            id: track.id,
+            title: track.title,
+            albumId: track.album_id,
+            albumTitle: albumById.get(track.album_id)?.title ?? "Unknown Album",
+            trackNumber: track.track_number,
+            audioSourceType,
+            streamUrl: isStream ? track.audio_url : null,
+            releaseUrl: releaseUrl ?? null,
+            audioUrl: isStream ? track.audio_url : null,
+          };
+        })
+        .sort((a, b) => {
+          if (!featuredAlbumId) {
+            return 0;
+          }
+          if (a.albumId === featuredAlbumId && b.albumId !== featuredAlbumId) {
+            return -1;
+          }
+          if (a.albumId !== featuredAlbumId && b.albumId === featuredAlbumId) {
+            return 1;
+          }
           return 0;
-        }
-        if (a.albumId === featuredAlbumId && b.albumId !== featuredAlbumId) {
-          return -1;
-        }
-        if (a.albumId !== featuredAlbumId && b.albumId === featuredAlbumId) {
-          return 1;
-        }
-        return 0;
-      }),
-  };
+        }),
+    };
+  } catch {
+    return fallbackLibrary;
+  }
 }
 
 function mapMerchRowToProduct(row: {
