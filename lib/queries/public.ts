@@ -362,103 +362,113 @@ function mapMerchRowToProduct(row: {
 }
 
 export async function getMerchProductsPublic(params: MerchFilterParams) {
-  const supabase = createSupabasePublicServerClient();
   const page = params.page && params.page > 0 ? params.page : 1;
   const pageSize = params.pageSize && params.pageSize > 0 ? Math.min(48, params.pageSize) : 12;
-
-  if (!supabase) {
-    return {
-      items: [] as MerchProduct[],
-      page,
-      pageSize,
-      total: 0,
-      totalPages: 1,
-    };
-  }
-
-  let countQuery = supabase
-    .from("merch_products")
-    .select("id", { count: "exact", head: true })
-    .eq("is_published", true);
-  let dataQuery = supabase
-    .from("merch_products")
-    .select(
-      "id, name, slug, description_short, description_long, price, currency, compare_at_price, category, status, is_featured, is_published, cover_image_url, gallery_urls, buy_link, stock_total, sku, weight_grams, release_date, variants_json, seo_title, seo_description, created_at, updated_at",
-    )
-    .eq("is_published", true);
-
-  if (params.q) {
-    countQuery = countQuery.or(`name.ilike.%${params.q}%,description_short.ilike.%${params.q}%,category.ilike.%${params.q}%`);
-    dataQuery = dataQuery.or(`name.ilike.%${params.q}%,description_short.ilike.%${params.q}%,category.ilike.%${params.q}%`);
-  }
-
-  if (params.category && params.category !== "all") {
-    countQuery = countQuery.eq("category", params.category);
-    dataQuery = dataQuery.eq("category", params.category);
-  }
-
-  if (params.status && params.status !== "all") {
-    countQuery = countQuery.eq("status", params.status);
-    dataQuery = dataQuery.eq("status", params.status);
-  }
-
-  if (typeof params.minPrice === "number" && Number.isFinite(params.minPrice)) {
-    countQuery = countQuery.gte("price", params.minPrice);
-    dataQuery = dataQuery.gte("price", params.minPrice);
-  }
-
-  if (typeof params.maxPrice === "number" && Number.isFinite(params.maxPrice)) {
-    countQuery = countQuery.lte("price", params.maxPrice);
-    dataQuery = dataQuery.lte("price", params.maxPrice);
-  }
-
-  if (params.sortBy === "price_asc") {
-    dataQuery = dataQuery.order("price", { ascending: true });
-  } else if (params.sortBy === "price_desc") {
-    dataQuery = dataQuery.order("price", { ascending: false });
-  } else if (params.sortBy === "featured") {
-    dataQuery = dataQuery.order("is_featured", { ascending: false }).order("created_at", { ascending: false });
-  } else {
-    dataQuery = dataQuery.order("created_at", { ascending: false });
-  }
-
-  const { count } = await countQuery;
-  const total = count ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const normalizedPage = Math.min(page, totalPages);
-  const from = (normalizedPage - 1) * pageSize;
-  const to = from + pageSize - 1;
-
-  const { data } = await dataQuery.range(from, to);
-
-  return {
-    items: (data ?? []).map((row) => mapMerchRowToProduct(row)),
-    page: normalizedPage,
+  const emptyResult = {
+    items: [] as MerchProduct[],
+    page,
     pageSize,
-    total,
-    totalPages,
+    total: 0,
+    totalPages: 1,
   };
+
+  try {
+    const supabase = createSupabasePublicServerClient();
+
+    if (!supabase) {
+      return emptyResult;
+    }
+
+    let countQuery = supabase
+      .from("merch_products")
+      .select("id", { count: "exact", head: true })
+      .eq("is_published", true);
+    let dataQuery = supabase
+      .from("merch_products")
+      .select(
+        "id, name, slug, description_short, description_long, price, currency, compare_at_price, category, status, is_featured, is_published, cover_image_url, gallery_urls, buy_link, stock_total, sku, weight_grams, release_date, variants_json, seo_title, seo_description, created_at, updated_at",
+      )
+      .eq("is_published", true);
+
+    if (params.q) {
+      countQuery = countQuery.or(`name.ilike.%${params.q}%,description_short.ilike.%${params.q}%,category.ilike.%${params.q}%`);
+      dataQuery = dataQuery.or(`name.ilike.%${params.q}%,description_short.ilike.%${params.q}%,category.ilike.%${params.q}%`);
+    }
+
+    if (params.category && params.category !== "all") {
+      countQuery = countQuery.eq("category", params.category);
+      dataQuery = dataQuery.eq("category", params.category);
+    }
+
+    if (params.status && params.status !== "all") {
+      countQuery = countQuery.eq("status", params.status);
+      dataQuery = dataQuery.eq("status", params.status);
+    }
+
+    if (typeof params.minPrice === "number" && Number.isFinite(params.minPrice)) {
+      countQuery = countQuery.gte("price", params.minPrice);
+      dataQuery = dataQuery.gte("price", params.minPrice);
+    }
+
+    if (typeof params.maxPrice === "number" && Number.isFinite(params.maxPrice)) {
+      countQuery = countQuery.lte("price", params.maxPrice);
+      dataQuery = dataQuery.lte("price", params.maxPrice);
+    }
+
+    if (params.sortBy === "price_asc") {
+      dataQuery = dataQuery.order("price", { ascending: true });
+    } else if (params.sortBy === "price_desc") {
+      dataQuery = dataQuery.order("price", { ascending: false });
+    } else if (params.sortBy === "featured") {
+      dataQuery = dataQuery.order("is_featured", { ascending: false }).order("created_at", { ascending: false });
+    } else {
+      dataQuery = dataQuery.order("created_at", { ascending: false });
+    }
+
+    const { count } = await countQuery;
+    const total = count ?? 0;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const normalizedPage = Math.min(page, totalPages);
+    const from = (normalizedPage - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data } = await dataQuery.range(from, to);
+
+    return {
+      items: (data ?? []).map((row) => mapMerchRowToProduct(row)),
+      page: normalizedPage,
+      pageSize,
+      total,
+      totalPages,
+    };
+  } catch {
+    return emptyResult;
+  }
 }
 
 export async function getMerchProductBySlugPublic(slug: string) {
-  const supabase = createSupabasePublicServerClient();
+  try {
+    const supabase = createSupabasePublicServerClient();
 
-  if (!supabase) {
+    if (!supabase) {
+      return null;
+    }
+
+    const { data } = await supabase
+      .from("merch_products")
+      .select(
+        "id, name, slug, description_short, description_long, price, currency, compare_at_price, category, status, is_featured, is_published, cover_image_url, gallery_urls, buy_link, stock_total, sku, weight_grams, release_date, variants_json, seo_title, seo_description, created_at, updated_at",
+      )
+      .eq("slug", slug)
+      .eq("is_published", true)
+      .maybeSingle();
+
+    if (!data) {
+      return null;
+    }
+
+    return mapMerchRowToProduct(data);
+  } catch {
     return null;
   }
-
-  const { data } = await supabase
-    .from("merch_products")
-    .select(
-      "id, name, slug, description_short, description_long, price, currency, compare_at_price, category, status, is_featured, is_published, cover_image_url, gallery_urls, buy_link, stock_total, sku, weight_grams, release_date, variants_json, seo_title, seo_description, created_at, updated_at",
-    )
-    .eq("slug", slug)
-    .eq("is_published", true)
-    .maybeSingle();
-
-  if (!data) {
-    return null;
-  }
-
-  return mapMerchRowToProduct(data);
 }
