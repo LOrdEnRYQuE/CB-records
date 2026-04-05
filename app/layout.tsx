@@ -10,6 +10,11 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
   metadataBase: new URL("https://cb-records.vercel.app"),
   title: {
     default: "ATTA AI Records | Cartieru' Bradet",
