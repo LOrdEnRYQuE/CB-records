@@ -53,7 +53,7 @@ export default async function HomePage() {
             muted
             loop
             playsInline
-            className="absolute inset-0 h-full w-full object-cover opacity-25"
+            className="absolute inset-0 z-0 h-full w-full object-cover opacity-25"
           >
             <source src="/Cinematic_Logo_Animation_Ready.mp4" type="video/mp4" />
           </video>
@@ -62,7 +62,7 @@ export default async function HomePage() {
             alt="Cartieru' Bradet hero banner"
             fill
             priority
-            className="absolute inset-0 object-cover object-center opacity-95"
+            className="absolute inset-0 z-0 object-cover object-center opacity-95"
           />
           <div className="cloud-sky" aria-hidden="true">
             <span className="cloud cloud-1" />
@@ -78,8 +78,8 @@ export default async function HomePage() {
             <span className="splash-drop splash-drop-2" />
             <span className="splash-drop splash-drop-3" />
           </div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_20%,rgba(212,175,55,0.2),transparent_38%),linear-gradient(90deg,rgba(0,0,0,0.5)_0%,rgba(0,0,0,0.18)_45%,rgba(0,0,0,0.6)_100%)]" />
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-black/72 to-transparent" />
+          <div className="absolute inset-0 z-2 bg-[radial-gradient(circle_at_82%_20%,rgba(212,175,55,0.2),transparent_38%),linear-gradient(90deg,rgba(0,0,0,0.5)_0%,rgba(0,0,0,0.18)_45%,rgba(0,0,0,0.6)_100%)]" />
+          <div className="absolute inset-x-0 bottom-0 z-2 h-32 bg-linear-to-t from-black/72 to-transparent" />
 
           <div className="absolute bottom-4 right-4 z-20 md:bottom-5 md:right-6">
             <Image
