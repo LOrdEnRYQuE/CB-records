@@ -31,8 +31,8 @@ export default async function EditMerchPage({ params, searchParams }: Props) {
   return (
     <section className="space-y-4">
       <div className="panel flex items-center justify-between rounded-2xl p-5">
-        <h1 className="text-3xl font-black">Edit Merch Product</h1>
-        <Link href="/admin/merch" className="btn-outline rounded-md px-3 py-1.5 text-sm">
+        <h1 className="admin-title">Edit Merch Product</h1>
+        <Link href="/admin/merch" className="btn-outline rounded-full px-3 py-1.5 text-sm">
           Back to merch
         </Link>
       </div>
@@ -83,7 +83,7 @@ export default async function EditMerchPage({ params, searchParams }: Props) {
 
         <div className="md:col-span-3">
           <div className="sticky bottom-3 z-10 rounded-xl border border-white/10 bg-black/80 p-2 backdrop-blur">
-            <SubmitButton idleLabel="Save Changes" pendingLabel="Saving..." className="btn-gold w-full rounded-md px-4 py-2" />
+            <SubmitButton idleLabel="Save Changes" pendingLabel="Saving..." className="btn-gold w-full rounded-full px-4 py-2" />
           </div>
         </div>
       </form>

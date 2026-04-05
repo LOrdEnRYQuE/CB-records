@@ -61,7 +61,7 @@ export default async function AdminMerchPage({ searchParams }: Props) {
   return (
     <section className="space-y-4">
       <div className="panel reveal-up rounded-2xl p-5">
-        <h1 className="text-3xl font-black">Merch</h1>
+        <h1 className="admin-title">Merch</h1>
         <p className="mt-1 text-sm text-zinc-300">Manage products, pricing, stock, and storefront visibility.</p>
       </div>
       <ToastBanner success={params.success} error={params.error} />
@@ -107,7 +107,7 @@ export default async function AdminMerchPage({ searchParams }: Props) {
           <input type="checkbox" name="isPublished" defaultChecked /> Published
         </label>
 
-        <SubmitButton idleLabel="Add Product" pendingLabel="Adding..." className="btn-gold rounded-md px-4 py-2 md:col-span-3" />
+        <SubmitButton idleLabel="Add Product" pendingLabel="Adding..." className="btn-gold rounded-full px-4 py-2 md:col-span-3" />
       </form>
 
       <form className="grid gap-3 rounded-2xl panel p-4 md:grid-cols-8">
@@ -135,13 +135,13 @@ export default async function AdminMerchPage({ searchParams }: Props) {
           <option value="20">20 / page</option>
           <option value="40">40 / page</option>
         </select>
-        <button type="submit" className="btn-outline rounded-md px-3 py-2">
+        <button type="submit" className="btn-outline rounded-full px-3 py-2">
           Apply filters
         </button>
       </form>
 
       <form className="mt-6">
-        <div className="sticky top-[78px] z-20 mb-3 rounded-xl border border-white/10 bg-black/75 p-2 backdrop-blur">
+        <div className="admin-toolbar">
           <div className="flex flex-wrap items-center gap-2">
             <button formAction={bulkPublishMerchProductsAction} type="submit" className="btn-success rounded px-3 py-1.5 text-xs">
               Publish Selected
@@ -205,49 +205,49 @@ export default async function AdminMerchPage({ searchParams }: Props) {
             </div>
 
             <div className="hidden overflow-hidden rounded-xl border border-white/10 md:block">
-              <table className="w-full border-collapse text-sm">
-              <thead className="bg-white/5 text-left text-zinc-300">
-                <tr>
-                  <th className="px-3 py-2"><span className="sr-only">Select</span></th>
-                  <th className="px-3 py-2">Name</th>
-                  <th className="px-3 py-2">Category</th>
-                  <th className="px-3 py-2">Price</th>
-                  <th className="px-3 py-2">Stock</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">Published</th>
-                  <th className="px-3 py-2 text-right">Actions</th>
-                </tr>
-              </thead>
+              <table className="admin-table">
+                <thead className="admin-table-head text-left">
+                  <tr>
+                    <th className="px-3 py-2"><span className="sr-only">Select</span></th>
+                    <th className="px-3 py-2">Name</th>
+                    <th className="px-3 py-2">Category</th>
+                    <th className="px-3 py-2">Price</th>
+                    <th className="px-3 py-2">Stock</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Published</th>
+                    <th className="px-3 py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {merch.items.map((item) => (
-                    <tr key={item.id} className="border-t border-white/10 hover:bg-white/[0.03]">
-                    <td className="px-3 py-2"><input type="checkbox" name="ids" value={item.id} /></td>
-                    <td className="px-3 py-2">{item.name}</td>
-                    <td className="px-3 py-2 text-zinc-400">{item.category}</td>
-                    <td className="px-3 py-2">{item.price} {item.currency}</td>
-                    <td className="px-3 py-2">{item.stock_total}</td>
-                    <td className="px-3 py-2 text-zinc-300">{item.status.replaceAll("_", " ")}</td>
-                    <td className="px-3 py-2"><StatusBadge value={item.is_published} /></td>
-                    <td className="px-3 py-2">
-                      <div className="flex justify-end gap-2">
-                        <Link href={`/admin/merch/${item.id}`} className="btn-soft rounded px-2 py-1 text-xs">Edit</Link>
-                        <button
-                          formAction={deleteMerchProductAction.bind(null, item.id)}
-                          id={`merch-delete-${item.id}`}
-                          type="submit"
-                          className="hidden"
-                        >
-                          Delete
-                        </button>
-                        <ConfirmSubmitButton
-                          targetSubmitId={`merch-delete-${item.id}`}
-                          label="Delete"
-                          title="Delete merch product?"
-                          description="This product will be removed from admin and storefront."
-                          className="btn-danger rounded px-2 py-1 text-xs"
-                        />
-                      </div>
-                    </td>
+                    <tr key={item.id} className="admin-row">
+                      <td className="px-3 py-2"><input type="checkbox" name="ids" value={item.id} /></td>
+                      <td className="px-3 py-2">{item.name}</td>
+                      <td className="px-3 py-2 text-zinc-400">{item.category}</td>
+                      <td className="px-3 py-2">{item.price} {item.currency}</td>
+                      <td className="px-3 py-2">{item.stock_total}</td>
+                      <td className="px-3 py-2 text-zinc-300">{item.status.replaceAll("_", " ")}</td>
+                      <td className="px-3 py-2"><StatusBadge value={item.is_published} /></td>
+                      <td className="px-3 py-2">
+                        <div className="flex justify-end gap-2">
+                          <Link href={`/admin/merch/${item.id}`} className="btn-soft rounded px-2 py-1 text-xs">Edit</Link>
+                          <button
+                            formAction={deleteMerchProductAction.bind(null, item.id)}
+                            id={`merch-delete-${item.id}`}
+                            type="submit"
+                            className="hidden"
+                          >
+                            Delete
+                          </button>
+                          <ConfirmSubmitButton
+                            targetSubmitId={`merch-delete-${item.id}`}
+                            label="Delete"
+                            title="Delete merch product?"
+                            description="This product will be removed from admin and storefront."
+                            className="btn-danger rounded px-2 py-1 text-xs"
+                          />
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -61,7 +61,7 @@ export default async function AdminAlbumsPage({ searchParams }: Props) {
   return (
     <section className="space-y-4">
       <div className="panel reveal-up rounded-2xl p-5">
-        <h1 className="text-3xl font-black">Albums</h1>
+        <h1 className="admin-title">Albums</h1>
         <p className="mt-1 text-sm text-zinc-300">Manage releases, publication state, and metadata.</p>
       </div>
       <ToastBanner success={params.success} error={params.error} />
@@ -76,7 +76,7 @@ export default async function AdminAlbumsPage({ searchParams }: Props) {
         />
 
         {artists.length === 0 ? (
-          <div className="flex items-center rounded-md border border-gold-500/40 bg-gold-500/10 px-3 py-2 text-sm text-gold-200">
+          <div className="flex items-center rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-2 text-sm text-gold-200">
             <input type="hidden" name="artistId" value="" />
             Artist will be auto-created on first album save.
           </div>
@@ -132,7 +132,7 @@ export default async function AdminAlbumsPage({ searchParams }: Props) {
           className="field md:col-span-2"
         />
 
-        <SubmitButton idleLabel="Add Album" pendingLabel="Adding..." className="btn-gold rounded-md px-4 py-2 md:col-span-3" />
+        <SubmitButton idleLabel="Add Album" pendingLabel="Adding..." className="btn-gold rounded-full px-4 py-2 md:col-span-3" />
       </form>
 
       <form className="grid gap-3 rounded-2xl panel p-4 md:grid-cols-6">
@@ -162,13 +162,13 @@ export default async function AdminAlbumsPage({ searchParams }: Props) {
           <option value="20">20 / page</option>
           <option value="40">40 / page</option>
         </select>
-        <button type="submit" className="btn-outline rounded-md px-3 py-2">
+        <button type="submit" className="btn-outline rounded-full px-3 py-2">
           Apply Filters
         </button>
       </form>
 
       <form className="mt-6">
-        <div className="sticky top-[78px] z-20 mb-3 rounded-xl border border-white/10 bg-black/75 p-2 backdrop-blur">
+        <div className="admin-toolbar">
           <div className="flex flex-wrap items-center gap-2">
             <button
               formAction={bulkPublishAlbumsAction}
@@ -257,8 +257,8 @@ export default async function AdminAlbumsPage({ searchParams }: Props) {
         </div>
 
         <div className="hidden overflow-hidden rounded-xl border border-white/10 md:block">
-          <table className="w-full border-collapse text-sm">
-            <thead className="bg-white/5 text-left text-zinc-300">
+          <table className="admin-table">
+            <thead className="admin-table-head text-left">
               <tr>
                 <th className="px-3 py-2">
                   <span className="sr-only">Select</span>
@@ -272,7 +272,7 @@ export default async function AdminAlbumsPage({ searchParams }: Props) {
             </thead>
             <tbody>
               {albums.items.map((album) => (
-                <tr key={album.id} className="border-t border-white/10 hover:bg-white/[0.03]">
+                <tr key={album.id} className="admin-row">
                   <td className="px-3 py-2">
                     <input type="checkbox" name="ids" value={album.id} />
                   </td>

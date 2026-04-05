@@ -41,10 +41,10 @@ export default function ContactPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/music" className="btn-gold rounded-lg px-5 py-2.5 text-sm">
+            <Link href="/music" className="btn-gold rounded-full px-5 py-2.5 text-sm">
               Open Music Library
             </Link>
-            <Link href="/merch" className="btn-soft rounded-lg px-5 py-2.5 text-sm">
+            <Link href="/merch" className="btn-soft rounded-full px-5 py-2.5 text-sm">
               Browse Merch
             </Link>
           </div>

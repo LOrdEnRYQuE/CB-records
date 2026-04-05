@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DesktopNavLinks } from "@/components/public/desktop-nav-links";
 import { MobileNavMenu } from "@/components/public/mobile-nav-menu";
 import { getSessionContext } from "@/lib/auth/session";
 
@@ -8,33 +9,14 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 md:px-6 md:py-4">
-        <Link href="/" className="text-base font-bold uppercase tracking-[0.14em] text-gold-500 md:text-lg md:tracking-widest">
-          ATTA AI Records
+        <Link href="/" className="group inline-flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-gold-500 shadow-[0_0_18px_rgba(212,175,55,0.9)] transition group-hover:scale-110" />
+          <span className="text-base font-bold uppercase tracking-[0.14em] text-gold-500 md:text-lg md:tracking-widest">
+            ATTA AI Records
+          </span>
         </Link>
 
-        <nav className="hidden items-center gap-5 text-sm text-zinc-300 md:flex">
-          <Link href="/music" className="transition-colors hover:text-white">
-            Music
-          </Link>
-          <Link href="/merch" className="transition-colors hover:text-white">
-            Merch
-          </Link>
-          <Link href="/about" className="transition-colors hover:text-white">
-            About
-          </Link>
-          <Link href="/contact" className="transition-colors hover:text-white">
-            Contact
-          </Link>
-          {user ? (
-            <Link href="/admin/dashboard" className="btn-gold rounded-md px-3 py-1.5">
-              Admin
-            </Link>
-          ) : (
-            <Link href="/login" className="btn-outline rounded-md px-3 py-1.5">
-              Login
-            </Link>
-          )}
-        </nav>
+        <DesktopNavLinks isAuthenticated={Boolean(user)} />
 
         <MobileNavMenu isAuthenticated={Boolean(user)} />
       </div>

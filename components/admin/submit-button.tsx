@@ -20,7 +20,7 @@ export function SubmitButton({
     <button
       type="submit"
       disabled={pending || props.disabled}
-      className={className ?? "btn-gold rounded-md px-4 py-2 text-sm"}
+      className={className ?? "btn-gold rounded-full px-4 py-2 text-sm"}
       {...props}
     >
       {pending ? pendingLabel : idleLabel}

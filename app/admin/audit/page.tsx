@@ -25,7 +25,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
   return (
     <section className="space-y-4">
       <div className="panel reveal-up rounded-2xl p-5">
-        <h1 className="text-3xl font-black">Audit Logs</h1>
+        <h1 className="admin-title">Audit Logs</h1>
         <p className="mt-1 text-sm text-zinc-300">Track who changed what and when.</p>
       </div>
       <ToastBanner success={params.success} error={params.error} />
@@ -48,7 +48,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
           <option value="20">20 / page</option>
           <option value="40">40 / page</option>
         </select>
-        <button type="submit" className="btn-outline rounded-md px-3 py-2">
+        <button type="submit" className="btn-outline rounded-full px-3 py-2">
           Apply filters
         </button>
       </form>
@@ -71,8 +71,8 @@ export default async function AdminAuditPage({ searchParams }: Props) {
           </div>
 
           <div className="mt-6 hidden overflow-hidden rounded-xl border border-white/10 md:block">
-            <table className="w-full border-collapse text-sm">
-              <thead className="bg-white/5 text-left text-zinc-300">
+            <table className="admin-table">
+              <thead className="admin-table-head text-left">
                 <tr>
                   <th className="px-3 py-2">When</th>
                   <th className="px-3 py-2">Actor</th>
@@ -83,7 +83,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
               </thead>
               <tbody>
                 {logs.items.map((log) => (
-                  <tr key={log.id} className="border-t border-white/10 hover:bg-white/[0.03]">
+                  <tr key={log.id} className="admin-row">
                     <td className="px-3 py-2 text-zinc-300">{new Date(log.created_at).toLocaleString()}</td>
                     <td className="px-3 py-2 text-zinc-400">{log.actor_email ?? "unknown"}</td>
                     <td className="px-3 py-2">{log.action}</td>

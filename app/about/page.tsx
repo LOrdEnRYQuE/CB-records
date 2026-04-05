@@ -34,10 +34,10 @@ export default async function AboutPage() {
               ATTA AI Records is focused on consistent releases, cinematic visuals, and strong storytelling through music.
             </p>
             <div className="flex flex-wrap gap-3 pt-1">
-              <Link href="/music" className="btn-gold rounded-lg px-5 py-2.5 text-sm">
+              <Link href="/music" className="btn-gold rounded-full px-5 py-2.5 text-sm">
                 Explore Music
               </Link>
-              <Link href="/contact" className="btn-soft rounded-lg px-5 py-2.5 text-sm">
+              <Link href="/contact" className="btn-soft rounded-full px-5 py-2.5 text-sm">
                 Contact & Booking
               </Link>
             </div>

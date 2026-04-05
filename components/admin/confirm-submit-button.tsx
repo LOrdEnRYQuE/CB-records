@@ -65,14 +65,14 @@ export function ConfirmSubmitButton({
                 ref={cancelRef}
                 type="button"
                 onClick={() => setOpen(false)}
-                className="btn-soft rounded px-3 py-1.5 text-sm"
+                className="btn-soft rounded-full px-3 py-1.5 text-sm"
               >
                 {cancelLabel}
               </button>
               <button
                 type="button"
                 onClick={onConfirm}
-                className="btn-danger rounded px-3 py-1.5 text-sm"
+                className="btn-danger rounded-full px-3 py-1.5 text-sm"
               >
                 {confirmLabel}
               </button>

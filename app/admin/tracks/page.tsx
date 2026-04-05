@@ -71,7 +71,7 @@ export default async function AdminTracksPage({ searchParams }: Props) {
   return (
     <section className="space-y-4">
       <div className="panel reveal-up rounded-2xl p-5">
-        <h1 className="text-3xl font-black">Tracks</h1>
+        <h1 className="admin-title">Tracks</h1>
         <p className="mt-1 text-sm text-zinc-300">Build album tracklists and control publication state.</p>
       </div>
       <ToastBanner success={params.success} error={params.error} />
@@ -141,7 +141,7 @@ export default async function AdminTracksPage({ searchParams }: Props) {
           <span className="text-zinc-200"> External</span> for DistroKid/Spotify/YouTube release links.
         </p>
 
-        <SubmitButton idleLabel="Add Track" pendingLabel="Adding..." className="btn-gold rounded-md px-4 py-2 md:col-span-3" />
+        <SubmitButton idleLabel="Add Track" pendingLabel="Adding..." className="btn-gold rounded-full px-4 py-2 md:col-span-3" />
       </form>
 
       <form action={importExternalTracksAction} className="grid gap-3 rounded-2xl panel p-4 md:grid-cols-3">
@@ -182,7 +182,7 @@ export default async function AdminTracksPage({ searchParams }: Props) {
         <SubmitButton
           idleLabel="Import External Releases"
           pendingLabel="Importing..."
-          className="btn-gold rounded-md px-4 py-2 md:col-span-3"
+          className="btn-gold rounded-full px-4 py-2 md:col-span-3"
         />
       </form>
 
@@ -231,7 +231,7 @@ export default async function AdminTracksPage({ searchParams }: Props) {
         <SubmitButton
           idleLabel="Import Share Playlist"
           pendingLabel="Importing..."
-          className="btn-gold rounded-md px-4 py-2 md:col-span-3"
+          className="btn-gold rounded-full px-4 py-2 md:col-span-3"
         />
       </form>
 
@@ -263,7 +263,7 @@ export default async function AdminTracksPage({ searchParams }: Props) {
           <option value="20">20 / page</option>
           <option value="40">40 / page</option>
         </select>
-        <button type="submit" className="btn-outline rounded-md px-3 py-2">
+        <button type="submit" className="btn-outline rounded-full px-3 py-2">
           Apply Filters
         </button>
       </form>
@@ -281,7 +281,7 @@ export default async function AdminTracksPage({ searchParams }: Props) {
           </div>
         </div>
 
-        <div className="sticky top-[78px] z-20 mb-3 rounded-xl border border-white/10 bg-black/75 p-2 backdrop-blur">
+        <div className="admin-toolbar">
           <div className="flex flex-wrap items-center gap-2">
             <button
               formAction={bulkPublishTracksAction}
@@ -393,8 +393,8 @@ export default async function AdminTracksPage({ searchParams }: Props) {
         </div>
 
         <div className="hidden overflow-hidden rounded-xl border border-white/10 md:block">
-          <table className="w-full border-collapse text-sm">
-            <thead className="bg-white/5 text-left text-zinc-300">
+          <table className="admin-table">
+            <thead className="admin-table-head text-left">
               <tr>
                 <th className="px-3 py-2">
                   <span className="sr-only">Select</span>
@@ -427,7 +427,7 @@ export default async function AdminTracksPage({ searchParams }: Props) {
                 const hasValidLink = track.source_type === "stream" ? Boolean(track.stream_url) : isHttpUrl(track.release_url);
 
                 return (
-                  <tr key={track.id} className="border-t border-white/10 hover:bg-white/[0.03]">
+                  <tr key={track.id} className="admin-row">
                     <td className="px-3 py-2">
                       <input type="checkbox" name="ids" value={track.id} />
                     </td>

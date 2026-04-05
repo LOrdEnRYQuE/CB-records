@@ -54,7 +54,7 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
   return (
     <section className="space-y-4">
       <div className="panel reveal-up rounded-2xl p-5">
-        <h1 className="text-3xl font-black">Site Settings</h1>
+        <h1 className="admin-title">Site Settings</h1>
         <p className="mt-1 text-sm text-zinc-300">Configure global content and runtime options.</p>
       </div>
       <ToastBanner success={params.success} error={params.error} />
@@ -75,7 +75,7 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
           placeholder='Value (example: "Welcome")'
           className="field"
         />
-        <SubmitButton idleLabel="Save Setting" pendingLabel="Saving..." className="btn-gold rounded-md px-4 py-2 md:col-span-2" />
+        <SubmitButton idleLabel="Save Setting" pendingLabel="Saving..." className="btn-gold rounded-full px-4 py-2 md:col-span-2" />
       </form>
 
       <form action={updateSiteSettingAction} className="grid gap-3 rounded-2xl panel p-4 md:grid-cols-2">
@@ -97,7 +97,7 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
         <SubmitButton
           idleLabel="Save Player Defaults"
           pendingLabel="Saving..."
-          className="btn-gold rounded-md px-4 py-2"
+          className="btn-gold rounded-full px-4 py-2"
         />
       </form>
 
@@ -123,29 +123,29 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
           <option value="20">20 / page</option>
           <option value="40">40 / page</option>
         </select>
-        <button type="submit" className="btn-outline rounded-md px-3 py-2">
+        <button type="submit" className="btn-outline rounded-full px-3 py-2">
           Apply Filters
         </button>
       </form>
 
       <form className="mt-6">
-        <div className="sticky top-[78px] z-20 mb-3 rounded-xl border border-white/10 bg-black/75 p-2 backdrop-blur">
+        <div className="admin-toolbar">
           <div className="flex flex-wrap items-center gap-2">
-          <button
-            formAction={bulkDeleteSiteSettingsAction}
-            id="settings-bulk-delete-submit"
-            type="submit"
-            className="hidden"
-          >
-            Delete Selected
-          </button>
-          <ConfirmSubmitButton
-            targetSubmitId="settings-bulk-delete-submit"
-            label="Delete Selected"
-            title="Delete selected settings?"
-            description="These configuration entries will be permanently removed."
-            className="btn-danger rounded px-3 py-1.5 text-xs"
-          />
+            <button
+              formAction={bulkDeleteSiteSettingsAction}
+              id="settings-bulk-delete-submit"
+              type="submit"
+              className="hidden"
+            >
+              Delete Selected
+            </button>
+            <ConfirmSubmitButton
+              targetSubmitId="settings-bulk-delete-submit"
+              label="Delete Selected"
+              title="Delete selected settings?"
+              description="These configuration entries will be permanently removed."
+              className="btn-danger rounded px-3 py-1.5 text-xs"
+            />
           </div>
         </div>
 
@@ -195,57 +195,57 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
             </div>
 
             <div className="hidden overflow-hidden rounded-xl border border-white/10 md:block">
-              <table className="w-full border-collapse text-sm">
-              <thead className="bg-white/5 text-left text-zinc-300">
-                <tr>
-                  <th className="px-3 py-2">
-                    <span className="sr-only">Select</span>
-                  </th>
-                  <th className="px-3 py-2">Key</th>
-                  <th className="px-3 py-2">Value</th>
-                  <th className="px-3 py-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {settings.items.map((setting) => (
-                  <tr key={setting.key} className="border-t border-white/10 hover:bg-white/[0.03]">
-                    <td className="px-3 py-2">
-                      <input type="checkbox" name="ids" value={setting.key} />
-                    </td>
-                    <td className="px-3 py-2">{setting.key}</td>
-                    <td className="px-3 py-2 text-zinc-300">
-                      <div className="max-w-[560px] truncate" title={JSON.stringify(setting.value)}>
-                        {JSON.stringify(setting.value)}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex justify-end gap-2">
-                        <Link
-                          href={`/admin/settings/${encodeURIComponent(setting.key)}`}
-                          className="btn-soft rounded px-2 py-1 text-xs"
-                        >
-                          Edit
-                        </Link>
-                        <button
-                          formAction={deleteSiteSettingAction.bind(null, setting.key)}
-                          id={`setting-delete-${encodeURIComponent(setting.key)}`}
-                          type="submit"
-                          className="hidden"
-                        >
-                          Delete
-                        </button>
-                        <ConfirmSubmitButton
-                          targetSubmitId={`setting-delete-${encodeURIComponent(setting.key)}`}
-                          label="Delete"
-                          title="Delete setting?"
-                          description="This setting will be permanently removed."
-                          className="btn-danger rounded px-2 py-1 text-xs"
-                        />
-                      </div>
-                    </td>
+              <table className="admin-table">
+                <thead className="admin-table-head text-left">
+                  <tr>
+                    <th className="px-3 py-2">
+                      <span className="sr-only">Select</span>
+                    </th>
+                    <th className="px-3 py-2">Key</th>
+                    <th className="px-3 py-2">Value</th>
+                    <th className="px-3 py-2 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
+                </thead>
+                <tbody>
+                  {settings.items.map((setting) => (
+                    <tr key={setting.key} className="admin-row">
+                      <td className="px-3 py-2">
+                        <input type="checkbox" name="ids" value={setting.key} />
+                      </td>
+                      <td className="px-3 py-2">{setting.key}</td>
+                      <td className="px-3 py-2 text-zinc-300">
+                        <div className="max-w-[560px] truncate" title={JSON.stringify(setting.value)}>
+                          {JSON.stringify(setting.value)}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex justify-end gap-2">
+                          <Link
+                            href={`/admin/settings/${encodeURIComponent(setting.key)}`}
+                            className="btn-soft rounded px-2 py-1 text-xs"
+                          >
+                            Edit
+                          </Link>
+                          <button
+                            formAction={deleteSiteSettingAction.bind(null, setting.key)}
+                            id={`setting-delete-${encodeURIComponent(setting.key)}`}
+                            type="submit"
+                            className="hidden"
+                          >
+                            Delete
+                          </button>
+                          <ConfirmSubmitButton
+                            targetSubmitId={`setting-delete-${encodeURIComponent(setting.key)}`}
+                            label="Delete"
+                            title="Delete setting?"
+                            description="This setting will be permanently removed."
+                            className="btn-danger rounded px-2 py-1 text-xs"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
             </div>
           </>

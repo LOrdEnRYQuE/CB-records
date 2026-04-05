@@ -53,10 +53,10 @@ export default async function HomePage() {
               <h1 className="display-title">{artist.name}</h1>
               <p className="max-w-2xl text-zinc-200">{artist.bio}</p>
               <div className="flex flex-wrap gap-3">
-                <Link href="/music" className="btn-gold rounded-lg px-5 py-2.5">
+                <Link href="/music" className="btn-gold rounded-full px-5 py-2.5">
                   Explore Music
                 </Link>
-                <Link href="/contact" className="btn-outline rounded-lg px-5 py-2.5">
+                <Link href="/contact" className="btn-outline rounded-full px-5 py-2.5">
                   Bookings
                 </Link>
               </div>
@@ -78,7 +78,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="mt-10 space-y-4 reveal-up reveal-delay-1">
+        <section className="section-wrap section-split space-y-4 reveal-up reveal-delay-1">
           <div className="flex items-end justify-between">
             <h2 className="section-title">Featured Releases</h2>
             <Link href="/music" className="btn-soft rounded-md px-3 py-1.5 text-sm">

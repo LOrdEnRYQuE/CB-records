@@ -101,7 +101,7 @@ export default async function MusicPage() {
           </div>
         </section>
 
-        <section className="mt-8">
+        <section className="section-wrap section-split">
           <MusicPlayer
             albums={player.albums}
             tracks={player.tracks}
@@ -110,11 +110,11 @@ export default async function MusicPage() {
           />
         </section>
 
-        <section className="mt-8">
+        <section className="section-wrap section-split">
           <MusicCatalog tracks={player.tracks} albums={player.albums} />
         </section>
 
-        <section className="mt-10">
+        <section className="section-wrap section-split">
           {albums.length ? (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {albums.map((album) => (
