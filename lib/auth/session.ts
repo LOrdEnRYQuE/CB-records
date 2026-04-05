@@ -5,28 +5,36 @@ import { hasRoleAccess } from "@/lib/auth/roles";
 import type { UserRole } from "@/types/database";
 
 export async function getSessionUser(): Promise<User | null> {
-  const supabase = await createSupabaseServerClient();
+  try {
+    const supabase = await createSupabaseServerClient();
 
-  if (!supabase) {
+    if (!supabase) {
+      return null;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    return user;
+  } catch {
     return null;
   }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  return user;
 }
 
 export async function getSessionRole(userId: string): Promise<UserRole | null> {
-  const supabase = await createSupabaseServerClient();
+  try {
+    const supabase = await createSupabaseServerClient();
 
-  if (!supabase) {
+    if (!supabase) {
+      return null;
+    }
+
+    const { data } = await supabase.from("users").select("role").eq("id", userId).maybeSingle();
+    return data?.role ?? null;
+  } catch {
     return null;
   }
-
-  const { data } = await supabase.from("users").select("role").eq("id", userId).maybeSingle();
-  return data?.role ?? null;
 }
 
 export async function getSessionContext() {
