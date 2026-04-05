@@ -3,6 +3,21 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseConfig, hasSupabasePublicConfig } from "@/lib/supabase/config";
 
+export function createSupabasePublicServerClient() {
+  const { url, anonKey } = getSupabaseConfig();
+
+  if (!hasSupabasePublicConfig() || !url || !anonKey) {
+    return null;
+  }
+
+  return createClient(url, anonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+
 export async function createSupabaseServerClient() {
   const { url, anonKey } = getSupabaseConfig();
 

@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabasePublicServerClient } from "@/lib/supabase/server";
 import { isPlayableAudioUrl } from "@/lib/audio";
 import { fallbackAlbums, fallbackArtist, fallbackTracks } from "@/lib/data/fallback";
 import type { MerchFilterParams, MerchProduct } from "@/types/merch";
@@ -21,7 +21,7 @@ function parseFeaturedAlbumId(value: unknown): string | null {
 
 export async function getArtistProfile() {
   try {
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabasePublicServerClient();
 
     if (!supabase) {
       return fallbackArtist;
@@ -51,7 +51,7 @@ export async function getArtistProfile() {
 
 export async function getFeaturedAlbums() {
   try {
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabasePublicServerClient();
 
     if (!supabase) {
       return fallbackAlbums;
@@ -83,7 +83,7 @@ export async function getFeaturedAlbums() {
 
 export async function getPublishedAlbums() {
   try {
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabasePublicServerClient();
 
     if (!supabase) {
       return fallbackAlbums;
@@ -113,7 +113,7 @@ export async function getPublishedAlbums() {
 }
 
 export async function getAlbumBySlug(slug: string) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicServerClient();
 
   if (!supabase) {
     const album = fallbackAlbums.find((item) => item.slug === slug) ?? fallbackAlbums[0];
@@ -204,7 +204,7 @@ export async function getPlayerLibrary() {
   };
 
   try {
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabasePublicServerClient();
 
     if (!supabase) {
       return fallbackLibrary;
@@ -362,7 +362,7 @@ function mapMerchRowToProduct(row: {
 }
 
 export async function getMerchProductsPublic(params: MerchFilterParams) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicServerClient();
   const page = params.page && params.page > 0 ? params.page : 1;
   const pageSize = params.pageSize && params.pageSize > 0 ? Math.min(48, params.pageSize) : 12;
 
@@ -441,7 +441,7 @@ export async function getMerchProductsPublic(params: MerchFilterParams) {
 }
 
 export async function getMerchProductBySlugPublic(slug: string) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicServerClient();
 
   if (!supabase) {
     return null;
