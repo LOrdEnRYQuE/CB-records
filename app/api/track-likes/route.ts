@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { checkRateLimit } from "@/lib/server/rate-limit";
 import { getClientIp, getRequestId, logApiEvent } from "@/lib/server/request";
 
 const MAX_TRACKS = 200;
@@ -27,15 +26,6 @@ function parseTrackIds(value: string | null) {
 export async function GET(request: Request) {
   const requestId = getRequestId(request);
   const ip = getClientIp(request);
-  const rate = checkRateLimit({
-    key: `track-likes:get:${ip}`,
-    limit: 120,
-    windowMs: 60_000,
-  });
-  if (!rate.allowed) {
-    logApiEvent("warn", "track_likes_get_rate_limited", { requestId, ip });
-    return NextResponse.json({ error: "Too many requests." }, { status: 429 });
-  }
 
   const url = new URL(request.url);
   const deviceId = normalizeDeviceId(url.searchParams.get("deviceId"));
@@ -84,15 +74,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
   const ip = getClientIp(request);
-  const rate = checkRateLimit({
-    key: `track-likes:post:${ip}`,
-    limit: 60,
-    windowMs: 60_000,
-  });
-  if (!rate.allowed) {
-    logApiEvent("warn", "track_likes_post_rate_limited", { requestId, ip });
-    return NextResponse.json({ error: "Too many requests." }, { status: 429 });
-  }
 
   const body = (await request.json().catch(() => ({}))) as {
     trackId?: string;

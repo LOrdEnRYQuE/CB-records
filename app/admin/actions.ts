@@ -6,7 +6,6 @@ import { redirect } from "next/navigation";
 import { requireAdminAccess } from "@/lib/auth/session";
 import { isPlayableAudioUrl } from "@/lib/audio";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { checkRateLimit } from "@/lib/server/rate-limit";
 import {
   validateAlbumPayload,
   validateId,
@@ -243,7 +242,6 @@ async function logAudit(
 async function requireAdminMutationAccess(
   pathname: string,
   actionKey: string,
-  options?: { limit?: number; windowMs?: number },
 ) {
   const { user, role } = await requireAdminAccess(pathname);
   const headerStore = await headers();
@@ -251,19 +249,6 @@ async function requireAdminMutationAccess(
   const ip = xff?.split(",")[0]?.trim() || headerStore.get("x-real-ip") || "unknown";
   const requestId = headerStore.get("cf-ray") || headerStore.get("x-request-id") || crypto.randomUUID();
   const actionId = crypto.randomUUID();
-
-  const limit = options?.limit ?? 80;
-  const windowMs = options?.windowMs ?? 60_000;
-
-  const rate = checkRateLimit({
-    key: `admin:${actionKey}:${user.id}:${ip}`,
-    limit,
-    windowMs,
-  });
-
-  if (!rate.allowed) {
-    redirectWith(pathname, "error", "Too many requests. Please wait and try again.");
-  }
 
   const context: AdminMutationContext = {
     actionId,
