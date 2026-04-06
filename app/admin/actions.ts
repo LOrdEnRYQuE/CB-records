@@ -82,11 +82,66 @@ function isHttpUrl(value: string) {
 function titleFromUrl(rawUrl: string) {
   try {
     const parsed = new URL(rawUrl);
-    const last = parsed.pathname.split("/").filter(Boolean).pop() ?? parsed.hostname;
-    return decodeURIComponent(last).replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+    const parts = parsed.pathname.split("/").filter(Boolean);
+
+    if (parsed.hostname.includes("music.apple.com") && parts.length >= 2) {
+      const albumOrTrackName = decodeURIComponent(parts[parts.length - 2] ?? "");
+      const cleaned = albumOrTrackName.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+      if (cleaned) {
+        return cleaned;
+      }
+    }
+
+    const last = decodeURIComponent(parts[parts.length - 1] ?? parsed.hostname)
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (last && !/^[a-zA-Z0-9]{10,}$/.test(last)) {
+      return last;
+    }
+
+    const hostLabel = parsed.hostname.replace(/^www\./, "").split(".")[0] ?? "external";
+    return `${hostLabel} release`;
   } catch {
     return "External Release";
   }
+}
+
+function detectPlatformName(rawUrl: string) {
+  try {
+    const hostname = new URL(rawUrl).hostname.toLowerCase();
+    if (hostname.includes("hyperfollow")) {
+      return "HyperFollow";
+    }
+    if (hostname.includes("distrokid")) {
+      return "DistroKid";
+    }
+    if (hostname.includes("spotify")) {
+      return "Spotify";
+    }
+    if (hostname.includes("music.apple.com") || hostname === "apple.com") {
+      return "Apple Music";
+    }
+    if (hostname.includes("music.amazon")) {
+      return "Amazon Music";
+    }
+    if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) {
+      return "YouTube";
+    }
+    if (hostname.includes("soundcloud")) {
+      return "SoundCloud";
+    }
+    if (hostname.includes("deezer")) {
+      return "Deezer";
+    }
+    if (hostname.includes("tidal")) {
+      return "TIDAL";
+    }
+  } catch {
+    return "External";
+  }
+  return "External";
 }
 
 function parseReleaseImportLines(raw: string) {
@@ -423,6 +478,41 @@ async function syncHyperFollowLink(
   }
 
   return null;
+}
+
+async function syncReleaseLink(
+  supabase: ServerSupabase,
+  values: { trackId: string; url: string },
+) {
+  const trackId = values.trackId.trim();
+  const url = values.url.trim();
+  if (!trackId || !url) {
+    return null;
+  }
+
+  const platform = detectPlatformName(url);
+  const { data: existing, error: existingError } = await supabase
+    .from("platform_links")
+    .select("id")
+    .eq("track_id", trackId)
+    .eq("platform", platform)
+    .maybeSingle();
+
+  if (existingError) {
+    return existingError.message;
+  }
+
+  if (existing?.id) {
+    const { error } = await supabase.from("platform_links").update({ url }).eq("id", existing.id);
+    return error ? error.message : null;
+  }
+
+  const { error } = await supabase.from("platform_links").insert({
+    track_id: trackId,
+    platform,
+    url,
+  });
+  return error ? error.message : null;
 }
 
 async function uploadFileToMediaBucket(
@@ -994,7 +1084,7 @@ export async function importReleaseFromLinkAction(formData: FormData) {
     redirectWith("/admin/tracks", "error", createError?.message ?? "Failed to create track from URL.");
   }
 
-  const linkError = await syncHyperFollowLink(supabase, {
+  const linkError = await syncReleaseLink(supabase, {
     trackId: createdTrack.id,
     url: releaseUrl,
   });
