@@ -46,6 +46,8 @@ type Props = {
     previewAlbumId?: string;
     previewPublished?: "1" | "0";
     previewCoverImageUrl?: string;
+    previewStreamUrl?: string;
+    previewReleaseUrl?: string;
   }>;
 };
 
@@ -63,6 +65,8 @@ export default async function AdminTracksPage({ searchParams }: Props) {
   const previewAlbumId = params.previewAlbumId ?? "";
   const previewPublished = params.previewPublished === "0" ? "0" : "1";
   const previewCoverImageUrl = params.previewCoverImageUrl ?? "";
+  const previewStreamUrl = params.previewStreamUrl ?? "";
+  const previewReleaseUrl = params.previewReleaseUrl ?? "";
 
   const [tracks, albums] = await Promise.all([
     getTracksForAdmin({ page, pageSize, q, status, sortBy, sortDir }),
@@ -221,6 +225,11 @@ export default async function AdminTracksPage({ searchParams }: Props) {
             <form action={importReleaseFromLinkAction} className="pt-1">
               <input type="hidden" name="sourceUrl" value={previewSourceUrl} />
               <input type="hidden" name="albumId" value={previewAlbumId} />
+              <input type="hidden" name="previewTitle" value={previewTitle} />
+              <input type="hidden" name="previewSourceType" value={previewSourceType} />
+              <input type="hidden" name="previewStreamUrl" value={previewStreamUrl} />
+              <input type="hidden" name="previewReleaseUrl" value={previewReleaseUrl} />
+              <input type="hidden" name="previewCoverImageUrl" value={previewCoverImageUrl} />
               {previewPublished === "1" ? <input type="hidden" name="isPublished" value="on" /> : null}
               <SubmitButton
                 idleLabel="Confirm Import"

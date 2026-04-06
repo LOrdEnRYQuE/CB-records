@@ -892,17 +892,33 @@ export async function importReleaseFromLinkAction(formData: FormData) {
   const sourceUrl = String(formData.get("sourceUrl") ?? "").trim();
   const selectedAlbumId = String(formData.get("albumId") ?? "").trim();
   const isPublished = toBool(formData, "isPublished");
+  const previewTitle = String(formData.get("previewTitle") ?? "").trim();
+  const previewSourceType = String(formData.get("previewSourceType") ?? "").trim();
+  const previewStreamUrl = String(formData.get("previewStreamUrl") ?? "").trim();
+  const previewReleaseUrl = String(formData.get("previewReleaseUrl") ?? "").trim();
+  const previewCoverImageUrl = String(formData.get("previewCoverImageUrl") ?? "").trim();
 
   if (!isHttpUrl(sourceUrl)) {
     redirectWith("/admin/tracks", "error", "Please paste a valid URL.");
   }
 
   const supabase = await getRequiredSupabase("/admin/tracks");
-  const preview = await extractReleasePreview(sourceUrl);
+  const previewFromForm =
+    previewTitle && (previewSourceType === "stream" || previewSourceType === "external")
+      ? {
+          error: null as string | null,
+          title: previewTitle,
+          streamUrl: previewSourceType === "stream" ? previewStreamUrl || sourceUrl : null,
+          releaseUrl:
+            previewSourceType === "external"
+              ? previewReleaseUrl || sourceUrl
+              : previewReleaseUrl || null,
+          coverImageUrl: previewCoverImageUrl || null,
+        }
+      : null;
 
-  if (preview.error || !preview.title) {
-    redirectWith("/admin/tracks", "error", preview.error ?? "Could not extract data from URL.");
-  }
+  const preview = previewFromForm ?? (await extractReleasePreview(sourceUrl));
+  const safeTitle = preview.title || titleFromUrl(sourceUrl) || "Imported Release";
 
   let albumId = selectedAlbumId;
   if (albumId) {
@@ -918,7 +934,7 @@ export async function importReleaseFromLinkAction(formData: FormData) {
     const { albumId: autoAlbumId, error: albumError } = await getOrCreateSinglesAlbumId(
       supabase,
       artistId,
-      preview.coverImageUrl,
+      preview.coverImageUrl ?? null,
     );
     if (albumError || !autoAlbumId) {
       redirectWith("/admin/tracks", "error", albumError ?? "Failed to resolve album.");
@@ -930,7 +946,7 @@ export async function importReleaseFromLinkAction(formData: FormData) {
   const releaseUrl = preview.releaseUrl ?? sourceUrl;
 
   const trackValidation = validateTrackPayload({
-    title: preview.title,
+    title: safeTitle,
     albumId,
     sourceType,
     streamUrl: preview.streamUrl ?? "",
@@ -945,7 +961,7 @@ export async function importReleaseFromLinkAction(formData: FormData) {
     .select("slug, track_number")
     .eq("album_id", albumId);
   const usedSlugs = new Set((existingTracks ?? []).map((track) => track.slug));
-  let slug = slugify(preview.title);
+  let slug = slugify(safeTitle);
   if (!slug) {
     slug = "track";
   }
@@ -964,7 +980,7 @@ export async function importReleaseFromLinkAction(formData: FormData) {
   const { data: createdTrack, error: createError } = await supabase
     .from("tracks")
     .insert({
-      title: preview.title,
+      title: safeTitle,
       slug: uniqueSlug,
       album_id: albumId,
       audio_url: preview.streamUrl,
@@ -991,12 +1007,12 @@ export async function importReleaseFromLinkAction(formData: FormData) {
   revalidatePath("/admin/albums");
   await logAudit(supabase, context, "track.import_release_link", "track", createdTrack.id, {
     sourceUrl,
-    extractedTitle: preview.title,
+    extractedTitle: safeTitle,
     sourceType,
     albumId,
     isPublished,
   });
-  redirectWith("/admin/tracks", "success", `Imported "${preview.title}" from link.`);
+  redirectWith("/admin/tracks", "success", `Imported "${safeTitle}" from link.`);
 }
 
 export async function previewReleaseFromLinkAction(formData: FormData) {
@@ -1015,18 +1031,23 @@ export async function previewReleaseFromLinkAction(formData: FormData) {
   }
 
   const preview = await extractReleasePreview(sourceUrl);
-  if (preview.error || !preview.title) {
-    redirectWith("/admin/tracks", "error", preview.error ?? "Could not extract data from URL.");
-  }
+  const safePreviewTitle = preview.title || titleFromUrl(sourceUrl) || "Imported Release";
+  const safePreviewSourceType = preview.streamUrl ? "stream" : "external";
+  const safePreviewReleaseUrl = preview.releaseUrl ?? sourceUrl;
 
   const params = new URLSearchParams();
   params.set("previewSourceUrl", sourceUrl);
-  params.set("previewTitle", preview.title);
-  params.set("previewSourceType", preview.streamUrl ? "stream" : "external");
+  params.set("previewTitle", safePreviewTitle);
+  params.set("previewSourceType", safePreviewSourceType);
+  params.set("previewStreamUrl", preview.streamUrl ?? "");
+  params.set("previewReleaseUrl", safePreviewReleaseUrl);
   params.set("previewAlbumId", albumId);
   params.set("previewPublished", isPublished ? "1" : "0");
   if (preview.coverImageUrl) {
     params.set("previewCoverImageUrl", preview.coverImageUrl);
+  }
+  if (preview.error) {
+    params.set("success", "Preview generated with fallback metadata.");
   }
 
   redirect(`/admin/tracks?${params.toString()}`);
