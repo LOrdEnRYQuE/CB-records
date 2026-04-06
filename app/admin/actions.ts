@@ -999,6 +999,39 @@ export async function importReleaseFromLinkAction(formData: FormData) {
   redirectWith("/admin/tracks", "success", `Imported "${preview.title}" from link.`);
 }
 
+export async function previewReleaseFromLinkAction(formData: FormData) {
+  const { role } = await requireAdminMutationAccess("/admin/tracks", "track.preview_release_link");
+
+  if (role === "media_manager") {
+    redirect("/admin/dashboard?error=insufficient-role");
+  }
+
+  const sourceUrl = String(formData.get("sourceUrl") ?? "").trim();
+  const albumId = String(formData.get("albumId") ?? "").trim();
+  const isPublished = toBool(formData, "isPublished");
+
+  if (!isHttpUrl(sourceUrl)) {
+    redirectWith("/admin/tracks", "error", "Please paste a valid URL.");
+  }
+
+  const preview = await extractReleasePreview(sourceUrl);
+  if (preview.error || !preview.title) {
+    redirectWith("/admin/tracks", "error", preview.error ?? "Could not extract data from URL.");
+  }
+
+  const params = new URLSearchParams();
+  params.set("previewSourceUrl", sourceUrl);
+  params.set("previewTitle", preview.title);
+  params.set("previewSourceType", preview.streamUrl ? "stream" : "external");
+  params.set("previewAlbumId", albumId);
+  params.set("previewPublished", isPublished ? "1" : "0");
+  if (preview.coverImageUrl) {
+    params.set("previewCoverImageUrl", preview.coverImageUrl);
+  }
+
+  redirect(`/admin/tracks?${params.toString()}`);
+}
+
 export async function importExternalTracksAction(formData: FormData) {
   const { role, context } = await requireAdminMutationAccess("/admin/tracks", "track.bulk_import_external");
 

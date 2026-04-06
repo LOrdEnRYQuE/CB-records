@@ -8,6 +8,7 @@ import {
   importExternalTracksAction,
   importReleaseFromLinkAction,
   importSharePlaylistAction,
+  previewReleaseFromLinkAction,
 } from "@/app/admin/actions";
 import { AdminPagination } from "@/components/admin/pagination";
 import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
@@ -39,6 +40,12 @@ type Props = {
     pageSize?: string;
     success?: string;
     error?: string;
+    previewSourceUrl?: string;
+    previewTitle?: string;
+    previewSourceType?: "stream" | "external";
+    previewAlbumId?: string;
+    previewPublished?: "1" | "0";
+    previewCoverImageUrl?: string;
   }>;
 };
 
@@ -50,6 +57,12 @@ export default async function AdminTracksPage({ searchParams }: Props) {
   const status = params.status ?? "all";
   const sortBy = params.sortBy ?? "created_at";
   const sortDir = params.sortDir ?? "desc";
+  const previewSourceUrl = params.previewSourceUrl ?? "";
+  const previewTitle = params.previewTitle ?? "";
+  const previewSourceType = params.previewSourceType === "stream" ? "stream" : "external";
+  const previewAlbumId = params.previewAlbumId ?? "";
+  const previewPublished = params.previewPublished === "0" ? "0" : "1";
+  const previewCoverImageUrl = params.previewCoverImageUrl ?? "";
 
   const [tracks, albums] = await Promise.all([
     getTracksForAdmin({ page, pageSize, q, status, sortBy, sortDir }),
@@ -145,10 +158,10 @@ export default async function AdminTracksPage({ searchParams }: Props) {
         <SubmitButton idleLabel="Add Track" pendingLabel="Adding..." className="btn-gold rounded-full px-4 py-2 md:col-span-3" />
       </form>
 
-      <form action={importReleaseFromLinkAction} className="grid gap-3 rounded-2xl panel p-4 md:grid-cols-3">
+      <form action={previewReleaseFromLinkAction} className="grid gap-3 rounded-2xl panel p-4 md:grid-cols-3">
         <h2 className="text-lg font-semibold md:col-span-3">One-Link Smart Import</h2>
         <p className="text-xs text-zinc-400 md:col-span-3">
-          Paste any release link (DistroKid/HyperFollow/Spotify/Apple/YouTube/etc). We extract what we can and create the track automatically.
+          Step 1: Paste any release link (DistroKid/HyperFollow/Spotify/Apple/YouTube/etc) and preview extracted metadata.
         </p>
 
         <input
@@ -173,11 +186,51 @@ export default async function AdminTracksPage({ searchParams }: Props) {
         </label>
 
         <SubmitButton
-          idleLabel="Import From Link"
-          pendingLabel="Extracting..."
+          idleLabel="Preview Link"
+          pendingLabel="Extracting preview..."
           className="btn-gold rounded-full px-4 py-2 md:col-span-3"
         />
       </form>
+
+      {previewSourceUrl ? (
+        <div className="grid gap-3 rounded-2xl border border-gold-500/35 bg-gold-500/10 p-4 md:grid-cols-[140px_1fr]">
+          <div className="overflow-hidden rounded-xl border border-white/10 bg-black/35">
+            {previewCoverImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={previewCoverImageUrl} alt={previewTitle || "Preview cover"} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full min-h-28 items-center justify-center text-xs text-zinc-400">No cover</div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-widest text-gold-300">Step 2: Confirm Import</p>
+            <p className="text-lg font-semibold text-zinc-100">{previewTitle || "Untitled release"}</p>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/20 px-2 py-0.5 text-xs text-zinc-200">
+                Source: {previewSourceType === "stream" ? "Stream" : "External"}
+              </span>
+              <span className="rounded-full border border-white/20 px-2 py-0.5 text-xs text-zinc-200">
+                Album: {albums.items.find((album) => album.id === previewAlbumId)?.title ?? "Auto (Singles)"}
+              </span>
+              <span className="rounded-full border border-white/20 px-2 py-0.5 text-xs text-zinc-200">
+                {previewPublished === "1" ? "Published" : "Draft"}
+              </span>
+            </div>
+            <p className="text-xs text-zinc-400 break-all">{previewSourceUrl}</p>
+
+            <form action={importReleaseFromLinkAction} className="pt-1">
+              <input type="hidden" name="sourceUrl" value={previewSourceUrl} />
+              <input type="hidden" name="albumId" value={previewAlbumId} />
+              {previewPublished === "1" ? <input type="hidden" name="isPublished" value="on" /> : null}
+              <SubmitButton
+                idleLabel="Confirm Import"
+                pendingLabel="Importing..."
+                className="btn-gold rounded-full px-4 py-2"
+              />
+            </form>
+          </div>
+        </div>
+      ) : null}
 
       <form action={importExternalTracksAction} className="grid gap-3 rounded-2xl panel p-4 md:grid-cols-3">
         <h2 className="text-lg font-semibold md:col-span-3">Quick Import Releases</h2>
