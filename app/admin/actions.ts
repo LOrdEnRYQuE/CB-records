@@ -1,12 +1,34 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireAdminAccess } from "@/lib/auth/session";
 import { isPlayableAudioUrl } from "@/lib/audio";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/server/rate-limit";
+import {
+  validateAlbumPayload,
+  validateId,
+  validateIdList,
+  validateMediaPayload,
+  validateMerchPayload,
+  validateSettingKeys,
+  validateSettingPayload,
+  validateTrackPayload,
+} from "@/lib/server/admin-validators";
 
 type ServerSupabase = NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>;
+type AdminMutationContext = {
+  actionId: string;
+  requestId: string;
+  ip: string;
+  pathname: string;
+  actionKey: string;
+  actorId: string;
+  actorEmail: string | null;
+  role: "admin" | "editor" | "media_manager";
+};
 
 function slugify(value: string) {
   return value
@@ -183,27 +205,78 @@ async function getRequiredSupabase(pathname: string) {
 
 async function logAudit(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  context: AdminMutationContext | null,
   action: string,
   entityType: string,
   entityId: string | null,
   details?: Record<string, unknown>,
 ) {
-  if (!supabase) {
+  if (!supabase || !context) {
     return;
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const auditDetails = {
+    ...(details ?? {}),
+    _request: {
+      actionId: context.actionId,
+      requestId: context.requestId,
+      ip: context.ip,
+      pathname: context.pathname,
+      actionKey: context.actionKey,
+    },
+  };
 
-  await supabase.from("audit_logs").insert({
-    actor_id: user?.id ?? null,
-    actor_email: user?.email ?? null,
+  const { error } = await supabase.from("audit_logs").insert({
+    actor_id: context.actorId,
+    actor_email: context.actorEmail,
     action,
     entity_type: entityType,
     entity_id: entityId,
-    details: details ?? null,
+    details: auditDetails,
   });
+
+  if (error) {
+    redirectWith(context.pathname, "error", "Audit logging failed.");
+  }
+}
+
+async function requireAdminMutationAccess(
+  pathname: string,
+  actionKey: string,
+  options?: { limit?: number; windowMs?: number },
+) {
+  const { user, role } = await requireAdminAccess(pathname);
+  const headerStore = await headers();
+  const xff = headerStore.get("x-forwarded-for");
+  const ip = xff?.split(",")[0]?.trim() || headerStore.get("x-real-ip") || "unknown";
+  const requestId = headerStore.get("cf-ray") || headerStore.get("x-request-id") || crypto.randomUUID();
+  const actionId = crypto.randomUUID();
+
+  const limit = options?.limit ?? 80;
+  const windowMs = options?.windowMs ?? 60_000;
+
+  const rate = checkRateLimit({
+    key: `admin:${actionKey}:${user.id}:${ip}`,
+    limit,
+    windowMs,
+  });
+
+  if (!rate.allowed) {
+    redirectWith(pathname, "error", "Too many requests. Please wait and try again.");
+  }
+
+  const context: AdminMutationContext = {
+    actionId,
+    requestId,
+    ip,
+    pathname,
+    actionKey,
+    actorId: user.id,
+    actorEmail: user.email ?? null,
+    role,
+  };
+
+  return { user, role, context } as const;
 }
 
 async function syncHyperFollowLink(
@@ -350,7 +423,7 @@ export async function signOutAction() {
 }
 
 export async function createAlbumAction(formData: FormData) {
-  const { role } = await requireAdminAccess("/admin/albums");
+  const { role, context } = await requireAdminMutationAccess("/admin/albums", "album.create");
 
   if (role === "media_manager") {
     redirect("/admin/dashboard?error=insufficient-role");
@@ -366,8 +439,9 @@ export async function createAlbumAction(formData: FormData) {
   const uploadedCoverFile =
     coverImageFile instanceof File && coverImageFile.size > 0 ? coverImageFile : null;
 
-  if (!title) {
-    redirectWith("/admin/albums", "error", "Title is required.");
+  const albumValidation = validateAlbumPayload({ title, artistId: artistIdRaw, hyperFollowUrl });
+  if (!albumValidation.ok) {
+    redirectWith("/admin/albums", "error", albumValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/albums");
@@ -424,7 +498,7 @@ export async function createAlbumAction(formData: FormData) {
 
   revalidatePath("/music");
   revalidatePath("/admin/albums");
-  await logAudit(supabase, "album.create", "album", createdAlbum.id, {
+  await logAudit(supabase, context, "album.create", "album", createdAlbum.id, {
     title,
     artistId,
     isPublished,
@@ -434,7 +508,7 @@ export async function createAlbumAction(formData: FormData) {
 }
 
 export async function updateAlbumAction(formData: FormData) {
-  await requireAdminAccess("/admin/albums");
+  const { context } = await requireAdminMutationAccess("/admin/albums", "album.update");
 
   const id = String(formData.get("id") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
@@ -447,8 +521,13 @@ export async function updateAlbumAction(formData: FormData) {
   const uploadedCoverFile =
     coverImageFile instanceof File && coverImageFile.size > 0 ? coverImageFile : null;
 
-  if (!id || !title || !artistId) {
-    redirectWith("/admin/albums", "error", "Missing required fields.");
+  const idValidation = validateId(id, "Album id");
+  if (!idValidation.ok) {
+    redirectWith("/admin/albums", "error", idValidation.error);
+  }
+  const albumValidation = validateAlbumPayload({ title, artistId, hyperFollowUrl });
+  if (!albumValidation.ok) {
+    redirectWith("/admin/albums", "error", albumValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/albums");
@@ -492,7 +571,7 @@ export async function updateAlbumAction(formData: FormData) {
   revalidatePath("/music");
   revalidatePath("/admin/albums");
   revalidatePath(`/admin/albums/${id}`);
-  await logAudit(supabase, "album.update", "album", id, {
+  await logAudit(supabase, context, "album.update", "album", id, {
     title,
     artistId,
     isPublished,
@@ -502,12 +581,13 @@ export async function updateAlbumAction(formData: FormData) {
 }
 
 export async function deleteAlbumAction(input: FormData | string) {
-  await requireAdminAccess("/admin/albums");
+  const { context } = await requireAdminMutationAccess("/admin/albums", "album.delete");
 
   const id = typeof input === "string" ? input.trim() : String(input.get("id") ?? "").trim();
 
-  if (!id) {
-    redirectWith("/admin/albums", "error", "Album id missing.");
+  const idValidation = validateId(id, "Album id");
+  if (!idValidation.ok) {
+    redirectWith("/admin/albums", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/albums");
@@ -520,16 +600,16 @@ export async function deleteAlbumAction(input: FormData | string) {
 
   revalidatePath("/music");
   revalidatePath("/admin/albums");
-  await logAudit(supabase, "album.delete", "album", id);
+  await logAudit(supabase, context, "album.delete", "album", id);
   redirectWith("/admin/albums", "success", "Album deleted.");
 }
 
 export async function bulkPublishAlbumsAction(formData: FormData) {
-  await requireAdminAccess("/admin/albums");
+  const { context } = await requireAdminMutationAccess("/admin/albums", "album.bulk_publish");
   const ids = getIds(formData);
-
-  if (!ids.length) {
-    redirectWith("/admin/albums", "error", "Select at least one album.");
+  const idValidation = validateIdList(ids, "album");
+  if (!idValidation.ok) {
+    redirectWith("/admin/albums", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/albums");
@@ -541,16 +621,16 @@ export async function bulkPublishAlbumsAction(formData: FormData) {
 
   revalidatePath("/music");
   revalidatePath("/admin/albums");
-  await logAudit(supabase, "album.bulk_publish", "album", null, { ids });
+  await logAudit(supabase, context, "album.bulk_publish", "album", null, { ids });
   redirectWith("/admin/albums", "success", "Selected albums published.");
 }
 
 export async function bulkUnpublishAlbumsAction(formData: FormData) {
-  await requireAdminAccess("/admin/albums");
+  const { context } = await requireAdminMutationAccess("/admin/albums", "album.bulk_unpublish");
   const ids = getIds(formData);
-
-  if (!ids.length) {
-    redirectWith("/admin/albums", "error", "Select at least one album.");
+  const idValidation = validateIdList(ids, "album");
+  if (!idValidation.ok) {
+    redirectWith("/admin/albums", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/albums");
@@ -562,16 +642,16 @@ export async function bulkUnpublishAlbumsAction(formData: FormData) {
 
   revalidatePath("/music");
   revalidatePath("/admin/albums");
-  await logAudit(supabase, "album.bulk_unpublish", "album", null, { ids });
+  await logAudit(supabase, context, "album.bulk_unpublish", "album", null, { ids });
   redirectWith("/admin/albums", "success", "Selected albums moved to draft.");
 }
 
 export async function bulkDeleteAlbumsAction(formData: FormData) {
-  await requireAdminAccess("/admin/albums");
+  const { context } = await requireAdminMutationAccess("/admin/albums", "album.bulk_delete");
   const ids = getIds(formData);
-
-  if (!ids.length) {
-    redirectWith("/admin/albums", "error", "Select at least one album.");
+  const idValidation = validateIdList(ids, "album");
+  if (!idValidation.ok) {
+    redirectWith("/admin/albums", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/albums");
@@ -583,12 +663,12 @@ export async function bulkDeleteAlbumsAction(formData: FormData) {
 
   revalidatePath("/music");
   revalidatePath("/admin/albums");
-  await logAudit(supabase, "album.bulk_delete", "album", null, { ids });
+  await logAudit(supabase, context, "album.bulk_delete", "album", null, { ids });
   redirectWith("/admin/albums", "success", "Selected albums deleted.");
 }
 
 export async function createTrackAction(formData: FormData) {
-  const { role } = await requireAdminAccess("/admin/tracks");
+  const { role, context } = await requireAdminMutationAccess("/admin/tracks", "track.create");
 
   if (role === "media_manager") {
     redirect("/admin/dashboard?error=insufficient-role");
@@ -605,9 +685,17 @@ export async function createTrackAction(formData: FormData) {
   const isPublished = toBool(formData, "isPublished");
   const uploadedPromoDemoFile =
     promoDemoFile instanceof File && promoDemoFile.size > 0 ? promoDemoFile : null;
+  const effectiveReleaseUrl = releaseUrl || (sourceType === "external" ? streamUrl : "");
 
-  if (!title || !albumId) {
-    redirectWith("/admin/tracks", "error", "Title and album are required.");
+  const trackValidation = validateTrackPayload({
+    title,
+    albumId,
+    sourceType,
+    streamUrl,
+    releaseUrl: effectiveReleaseUrl,
+  });
+  if (!trackValidation.ok) {
+    redirectWith("/admin/tracks", "error", trackValidation.error);
   }
 
   if (sourceType === "stream" && !uploadedPromoDemoFile && !isPlayableAudioUrl(streamUrl)) {
@@ -617,8 +705,6 @@ export async function createTrackAction(formData: FormData) {
       "Stream URL must be a direct media file (.mp3/.wav/.m4a...).",
     );
   }
-
-  const effectiveReleaseUrl = releaseUrl || (sourceType === "external" ? streamUrl : "");
 
   if (sourceType === "external" && !effectiveReleaseUrl) {
     redirectWith("/admin/tracks", "error", "Release URL is required for external source.");
@@ -665,7 +751,7 @@ export async function createTrackAction(formData: FormData) {
 
   revalidatePath("/music");
   revalidatePath("/admin/tracks");
-  await logAudit(supabase, "track.create", "track", createdTrack.id, {
+  await logAudit(supabase, context, "track.create", "track", createdTrack.id, {
     title,
     albumId,
     isPublished,
@@ -676,7 +762,7 @@ export async function createTrackAction(formData: FormData) {
 }
 
 export async function importExternalTracksAction(formData: FormData) {
-  const { role } = await requireAdminAccess("/admin/tracks");
+  const { role, context } = await requireAdminMutationAccess("/admin/tracks", "track.bulk_import_external");
 
   if (role === "media_manager") {
     redirect("/admin/dashboard?error=insufficient-role");
@@ -687,8 +773,12 @@ export async function importExternalTracksAction(formData: FormData) {
   const startTrackNumberRaw = Number(String(formData.get("startTrackNumber") ?? "").trim());
   const isPublished = toBool(formData, "isPublished");
 
-  if (!albumId || !releaseLines) {
-    redirectWith("/admin/tracks", "error", "Album and release lines are required.");
+  const albumValidation = validateId(albumId, "Album id");
+  if (!albumValidation.ok) {
+    redirectWith("/admin/tracks", "error", albumValidation.error);
+  }
+  if (!releaseLines) {
+    redirectWith("/admin/tracks", "error", "Release lines are required.");
   }
 
   const { entries, errors } = parseReleaseImportLines(releaseLines);
@@ -756,7 +846,7 @@ export async function importExternalTracksAction(formData: FormData) {
 
   revalidatePath("/music");
   revalidatePath("/admin/tracks");
-  await logAudit(supabase, "track.bulk_import_external", "track", null, {
+  await logAudit(supabase, context, "track.bulk_import_external", "track", null, {
     albumId,
     createdCount,
     isPublished,
@@ -765,7 +855,7 @@ export async function importExternalTracksAction(formData: FormData) {
 }
 
 export async function importSharePlaylistAction(formData: FormData) {
-  const { role } = await requireAdminAccess("/admin/tracks");
+  const { role, context } = await requireAdminMutationAccess("/admin/tracks", "track.import_share_playlist");
 
   if (role === "media_manager") {
     redirect("/admin/dashboard?error=insufficient-role");
@@ -778,8 +868,12 @@ export async function importSharePlaylistAction(formData: FormData) {
   const copyToStorage = toBool(formData, "copyToStorage");
   const replaceExisting = toBool(formData, "replaceExisting");
 
-  if (!albumId || !isHttpUrl(shareUrl)) {
-    redirectWith("/admin/tracks", "error", "Valid album and share URL are required.");
+  const albumValidation = validateId(albumId, "Album id");
+  if (!albumValidation.ok) {
+    redirectWith("/admin/tracks", "error", albumValidation.error);
+  }
+  if (!isHttpUrl(shareUrl)) {
+    redirectWith("/admin/tracks", "error", "Valid share URL is required.");
   }
 
   const supabase = await getRequiredSupabase("/admin/tracks");
@@ -923,7 +1017,7 @@ export async function importSharePlaylistAction(formData: FormData) {
 
   revalidatePath("/music");
   revalidatePath("/admin/tracks");
-  await logAudit(supabase, "track.import_share_playlist", "track", null, {
+  await logAudit(supabase, context, "track.import_share_playlist", "track", null, {
     albumId,
     shareUrl,
     foundLinks: links.length,
@@ -941,7 +1035,7 @@ export async function importSharePlaylistAction(formData: FormData) {
 }
 
 export async function updateTrackAction(formData: FormData) {
-  await requireAdminAccess("/admin/tracks");
+  const { context } = await requireAdminMutationAccess("/admin/tracks", "track.update");
 
   const id = String(formData.get("id") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
@@ -955,9 +1049,21 @@ export async function updateTrackAction(formData: FormData) {
   const isPublished = toBool(formData, "isPublished");
   const uploadedPromoDemoFile =
     promoDemoFile instanceof File && promoDemoFile.size > 0 ? promoDemoFile : null;
+  const effectiveReleaseUrl = releaseUrl || (sourceType === "external" ? streamUrl : "");
 
-  if (!id || !title || !albumId) {
-    redirectWith("/admin/tracks", "error", "Missing required fields.");
+  const idValidation = validateId(id, "Track id");
+  if (!idValidation.ok) {
+    redirectWith("/admin/tracks", "error", idValidation.error);
+  }
+  const trackValidation = validateTrackPayload({
+    title,
+    albumId,
+    sourceType,
+    streamUrl,
+    releaseUrl: effectiveReleaseUrl,
+  });
+  if (!trackValidation.ok) {
+    redirectWith("/admin/tracks", "error", trackValidation.error);
   }
 
   if (sourceType === "stream" && !uploadedPromoDemoFile && !isPlayableAudioUrl(streamUrl)) {
@@ -968,7 +1074,6 @@ export async function updateTrackAction(formData: FormData) {
     );
   }
 
-  const effectiveReleaseUrl = releaseUrl || (sourceType === "external" ? streamUrl : "");
   if (sourceType === "external" && !effectiveReleaseUrl) {
     redirectWith(`/admin/tracks/${id}`, "error", "Release URL is required for external source.");
   }
@@ -1014,7 +1119,7 @@ export async function updateTrackAction(formData: FormData) {
   revalidatePath("/music");
   revalidatePath("/admin/tracks");
   revalidatePath(`/admin/tracks/${id}`);
-  await logAudit(supabase, "track.update", "track", id, {
+  await logAudit(supabase, context, "track.update", "track", id, {
     title,
     albumId,
     isPublished,
@@ -1025,12 +1130,13 @@ export async function updateTrackAction(formData: FormData) {
 }
 
 export async function deleteTrackAction(input: FormData | string) {
-  await requireAdminAccess("/admin/tracks");
+  const { context } = await requireAdminMutationAccess("/admin/tracks", "track.delete");
 
   const id = typeof input === "string" ? input.trim() : String(input.get("id") ?? "").trim();
 
-  if (!id) {
-    redirectWith("/admin/tracks", "error", "Track id missing.");
+  const idValidation = validateId(id, "Track id");
+  if (!idValidation.ok) {
+    redirectWith("/admin/tracks", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/tracks");
@@ -1043,16 +1149,16 @@ export async function deleteTrackAction(input: FormData | string) {
 
   revalidatePath("/music");
   revalidatePath("/admin/tracks");
-  await logAudit(supabase, "track.delete", "track", id);
+  await logAudit(supabase, context, "track.delete", "track", id);
   redirectWith("/admin/tracks", "success", "Track deleted.");
 }
 
 export async function bulkPublishTracksAction(formData: FormData) {
-  await requireAdminAccess("/admin/tracks");
+  const { context } = await requireAdminMutationAccess("/admin/tracks", "track.bulk_publish");
   const ids = getIds(formData);
-
-  if (!ids.length) {
-    redirectWith("/admin/tracks", "error", "Select at least one track.");
+  const idValidation = validateIdList(ids, "track");
+  if (!idValidation.ok) {
+    redirectWith("/admin/tracks", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/tracks");
@@ -1064,16 +1170,16 @@ export async function bulkPublishTracksAction(formData: FormData) {
 
   revalidatePath("/music");
   revalidatePath("/admin/tracks");
-  await logAudit(supabase, "track.bulk_publish", "track", null, { ids });
+  await logAudit(supabase, context, "track.bulk_publish", "track", null, { ids });
   redirectWith("/admin/tracks", "success", "Selected tracks published.");
 }
 
 export async function bulkUnpublishTracksAction(formData: FormData) {
-  await requireAdminAccess("/admin/tracks");
+  const { context } = await requireAdminMutationAccess("/admin/tracks", "track.bulk_unpublish");
   const ids = getIds(formData);
-
-  if (!ids.length) {
-    redirectWith("/admin/tracks", "error", "Select at least one track.");
+  const idValidation = validateIdList(ids, "track");
+  if (!idValidation.ok) {
+    redirectWith("/admin/tracks", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/tracks");
@@ -1085,16 +1191,16 @@ export async function bulkUnpublishTracksAction(formData: FormData) {
 
   revalidatePath("/music");
   revalidatePath("/admin/tracks");
-  await logAudit(supabase, "track.bulk_unpublish", "track", null, { ids });
+  await logAudit(supabase, context, "track.bulk_unpublish", "track", null, { ids });
   redirectWith("/admin/tracks", "success", "Selected tracks moved to draft.");
 }
 
 export async function bulkDeleteTracksAction(formData: FormData) {
-  await requireAdminAccess("/admin/tracks");
+  const { context } = await requireAdminMutationAccess("/admin/tracks", "track.bulk_delete");
   const ids = getIds(formData);
-
-  if (!ids.length) {
-    redirectWith("/admin/tracks", "error", "Select at least one track.");
+  const idValidation = validateIdList(ids, "track");
+  if (!idValidation.ok) {
+    redirectWith("/admin/tracks", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/tracks");
@@ -1106,12 +1212,12 @@ export async function bulkDeleteTracksAction(formData: FormData) {
 
   revalidatePath("/music");
   revalidatePath("/admin/tracks");
-  await logAudit(supabase, "track.bulk_delete", "track", null, { ids });
+  await logAudit(supabase, context, "track.bulk_delete", "track", null, { ids });
   redirectWith("/admin/tracks", "success", "Selected tracks deleted.");
 }
 
 export async function createMerchProductAction(formData: FormData) {
-  const { role } = await requireAdminAccess("/admin/merch");
+  const { role, context } = await requireAdminMutationAccess("/admin/merch", "merch.create");
 
   if (role === "media_manager") {
     redirect("/admin/dashboard?error=insufficient-role");
@@ -1141,15 +1247,9 @@ export async function createMerchProductAction(formData: FormData) {
   const coverImageFile = formData.get("coverImageFile");
   const uploadedCoverFile = coverImageFile instanceof File && coverImageFile.size > 0 ? coverImageFile : null;
 
-  if (!name || !buyLink || price === null || price < 0) {
-    redirectWith("/admin/merch", "error", "Name, buy link, and valid price are required.");
-  }
-
-  let parsedVariants: unknown = [];
-  try {
-    parsedVariants = variantsRaw ? JSON.parse(variantsRaw) : [];
-  } catch {
-    redirectWith("/admin/merch", "error", "Variants JSON is invalid.");
+  const merchValidation = validateMerchPayload({ name, buyLink, price, variantsRaw });
+  if (!merchValidation.ok) {
+    redirectWith("/admin/merch", "error", merchValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/merch");
@@ -1184,7 +1284,7 @@ export async function createMerchProductAction(formData: FormData) {
       release_date: releaseDate || null,
       cover_image_url: coverImageUrl,
       gallery_urls: parseCsvToList(galleryUrlsRaw),
-      variants_json: Array.isArray(parsedVariants) ? parsedVariants : [],
+      variants_json: merchValidation.data.parsedVariants,
       seo_title: seoTitle || null,
       seo_description: seoDescription || null,
       is_featured: isFeatured,
@@ -1199,12 +1299,12 @@ export async function createMerchProductAction(formData: FormData) {
 
   revalidatePath("/merch");
   revalidatePath("/admin/merch");
-  await logAudit(supabase, "merch.create", "merch_product", created.id, { name, slug, isPublished, status });
+  await logAudit(supabase, context, "merch.create", "merch_product", created.id, { name, slug, isPublished, status });
   redirectWith("/admin/merch", "success", "Merch product created.");
 }
 
 export async function updateMerchProductAction(formData: FormData) {
-  const { role } = await requireAdminAccess("/admin/merch");
+  const { role, context } = await requireAdminMutationAccess("/admin/merch", "merch.update");
 
   if (role === "media_manager") {
     redirect("/admin/dashboard?error=insufficient-role");
@@ -1235,15 +1335,13 @@ export async function updateMerchProductAction(formData: FormData) {
   const coverImageFile = formData.get("coverImageFile");
   const uploadedCoverFile = coverImageFile instanceof File && coverImageFile.size > 0 ? coverImageFile : null;
 
-  if (!id || !name || !buyLink || price === null || price < 0) {
-    redirectWith("/admin/merch", "error", "Missing required fields.");
+  const idValidation = validateId(id, "Product id");
+  if (!idValidation.ok) {
+    redirectWith("/admin/merch", "error", idValidation.error);
   }
-
-  let parsedVariants: unknown = [];
-  try {
-    parsedVariants = variantsRaw ? JSON.parse(variantsRaw) : [];
-  } catch {
-    redirectWith(`/admin/merch/${id}`, "error", "Variants JSON is invalid.");
+  const merchValidation = validateMerchPayload({ name, buyLink, price, variantsRaw });
+  if (!merchValidation.ok) {
+    redirectWith(`/admin/merch/${id}`, "error", merchValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/merch");
@@ -1278,7 +1376,7 @@ export async function updateMerchProductAction(formData: FormData) {
       release_date: releaseDate || null,
       cover_image_url: coverImageUrl,
       gallery_urls: parseCsvToList(galleryUrlsRaw),
-      variants_json: Array.isArray(parsedVariants) ? parsedVariants : [],
+      variants_json: merchValidation.data.parsedVariants,
       seo_title: seoTitle || null,
       seo_description: seoDescription || null,
       is_featured: isFeatured,
@@ -1293,20 +1391,21 @@ export async function updateMerchProductAction(formData: FormData) {
   revalidatePath("/merch");
   revalidatePath("/admin/merch");
   revalidatePath(`/admin/merch/${id}`);
-  await logAudit(supabase, "merch.update", "merch_product", id, { name, slug, isPublished, status });
+  await logAudit(supabase, context, "merch.update", "merch_product", id, { name, slug, isPublished, status });
   redirectWith("/admin/merch", "success", "Merch product updated.");
 }
 
 export async function deleteMerchProductAction(input: FormData | string) {
-  const { role } = await requireAdminAccess("/admin/merch");
+  const { role, context } = await requireAdminMutationAccess("/admin/merch", "merch.delete");
 
   if (role === "media_manager") {
     redirect("/admin/dashboard?error=insufficient-role");
   }
 
   const id = typeof input === "string" ? input.trim() : String(input.get("id") ?? "").trim();
-  if (!id) {
-    redirectWith("/admin/merch", "error", "Product id missing.");
+  const idValidation = validateId(id, "Product id");
+  if (!idValidation.ok) {
+    redirectWith("/admin/merch", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/merch");
@@ -1318,20 +1417,21 @@ export async function deleteMerchProductAction(input: FormData | string) {
 
   revalidatePath("/merch");
   revalidatePath("/admin/merch");
-  await logAudit(supabase, "merch.delete", "merch_product", id);
+  await logAudit(supabase, context, "merch.delete", "merch_product", id);
   redirectWith("/admin/merch", "success", "Merch product deleted.");
 }
 
 export async function bulkPublishMerchProductsAction(formData: FormData) {
-  const { role } = await requireAdminAccess("/admin/merch");
+  const { role, context } = await requireAdminMutationAccess("/admin/merch", "merch.bulk_publish");
 
   if (role === "media_manager") {
     redirect("/admin/dashboard?error=insufficient-role");
   }
 
   const ids = getIds(formData);
-  if (!ids.length) {
-    redirectWith("/admin/merch", "error", "Select at least one product.");
+  const idValidation = validateIdList(ids, "product");
+  if (!idValidation.ok) {
+    redirectWith("/admin/merch", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/merch");
@@ -1342,20 +1442,21 @@ export async function bulkPublishMerchProductsAction(formData: FormData) {
 
   revalidatePath("/merch");
   revalidatePath("/admin/merch");
-  await logAudit(supabase, "merch.bulk_publish", "merch_product", null, { ids });
+  await logAudit(supabase, context, "merch.bulk_publish", "merch_product", null, { ids });
   redirectWith("/admin/merch", "success", "Selected products published.");
 }
 
 export async function bulkUnpublishMerchProductsAction(formData: FormData) {
-  const { role } = await requireAdminAccess("/admin/merch");
+  const { role, context } = await requireAdminMutationAccess("/admin/merch", "merch.bulk_unpublish");
 
   if (role === "media_manager") {
     redirect("/admin/dashboard?error=insufficient-role");
   }
 
   const ids = getIds(formData);
-  if (!ids.length) {
-    redirectWith("/admin/merch", "error", "Select at least one product.");
+  const idValidation = validateIdList(ids, "product");
+  if (!idValidation.ok) {
+    redirectWith("/admin/merch", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/merch");
@@ -1366,20 +1467,21 @@ export async function bulkUnpublishMerchProductsAction(formData: FormData) {
 
   revalidatePath("/merch");
   revalidatePath("/admin/merch");
-  await logAudit(supabase, "merch.bulk_unpublish", "merch_product", null, { ids });
+  await logAudit(supabase, context, "merch.bulk_unpublish", "merch_product", null, { ids });
   redirectWith("/admin/merch", "success", "Selected products moved to draft.");
 }
 
 export async function bulkDeleteMerchProductsAction(formData: FormData) {
-  const { role } = await requireAdminAccess("/admin/merch");
+  const { role, context } = await requireAdminMutationAccess("/admin/merch", "merch.bulk_delete");
 
   if (role === "media_manager") {
     redirect("/admin/dashboard?error=insufficient-role");
   }
 
   const ids = getIds(formData);
-  if (!ids.length) {
-    redirectWith("/admin/merch", "error", "Select at least one product.");
+  const idValidation = validateIdList(ids, "product");
+  if (!idValidation.ok) {
+    redirectWith("/admin/merch", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/merch");
@@ -1390,12 +1492,12 @@ export async function bulkDeleteMerchProductsAction(formData: FormData) {
 
   revalidatePath("/merch");
   revalidatePath("/admin/merch");
-  await logAudit(supabase, "merch.bulk_delete", "merch_product", null, { ids });
+  await logAudit(supabase, context, "merch.bulk_delete", "merch_product", null, { ids });
   redirectWith("/admin/merch", "success", "Selected products deleted.");
 }
 
 export async function uploadMediaAction(formData: FormData) {
-  await requireAdminAccess("/admin/media");
+  const { context } = await requireAdminMutationAccess("/admin/media", "media.create");
 
   const file = formData.get("file");
   const title = String(formData.get("title") ?? "").trim();
@@ -1407,8 +1509,13 @@ export async function uploadMediaAction(formData: FormData) {
 
   const uploadedFile = file instanceof File ? file : null;
 
-  if (!uploadedFile || !title) {
-    redirectWith("/admin/media", "error", "Title and file are required.");
+  const mediaValidation = validateMediaPayload({ title, mediaType });
+  if (!mediaValidation.ok) {
+    redirectWith("/admin/media", "error", mediaValidation.error);
+  }
+
+  if (!uploadedFile) {
+    redirectWith("/admin/media", "error", "File is required.");
   }
 
   const supabase = await getRequiredSupabase("/admin/media");
@@ -1438,7 +1545,7 @@ export async function uploadMediaAction(formData: FormData) {
 
   const { error } = await supabase.from("media_assets").insert({
     title,
-    media_type: mediaType,
+    media_type: mediaValidation.data.mediaType,
     file_path: filePath,
     public_url: publicUrl,
     uploaded_by: user.id,
@@ -1449,12 +1556,12 @@ export async function uploadMediaAction(formData: FormData) {
   }
 
   revalidatePath("/admin/media");
-  await logAudit(supabase, "media.create", "media", null, { title, mediaType, filePath });
+  await logAudit(supabase, context, "media.create", "media", null, { title, mediaType, filePath });
   redirectWith("/admin/media", "success", "Media uploaded.");
 }
 
 export async function updateMediaAction(formData: FormData) {
-  await requireAdminAccess("/admin/media");
+  const { context } = await requireAdminMutationAccess("/admin/media", "media.update");
 
   const id = String(formData.get("id") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
@@ -1465,8 +1572,9 @@ export async function updateMediaAction(formData: FormData) {
     | "document";
   const altText = String(formData.get("altText") ?? "").trim();
 
-  if (!id || !title) {
-    redirectWith("/admin/media", "error", "Missing required fields.");
+  const mediaValidation = validateMediaPayload({ id, title, mediaType });
+  if (!mediaValidation.ok) {
+    redirectWith("/admin/media", "error", mediaValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/media");
@@ -1475,7 +1583,7 @@ export async function updateMediaAction(formData: FormData) {
     .from("media_assets")
     .update({
       title,
-      media_type: mediaType,
+      media_type: mediaValidation.data.mediaType,
       alt_text: altText || null,
     })
     .eq("id", id);
@@ -1486,17 +1594,18 @@ export async function updateMediaAction(formData: FormData) {
 
   revalidatePath("/admin/media");
   revalidatePath(`/admin/media/${id}`);
-  await logAudit(supabase, "media.update", "media", id, { title, mediaType });
+  await logAudit(supabase, context, "media.update", "media", id, { title, mediaType });
   redirectWith("/admin/media", "success", "Media updated.");
 }
 
 export async function deleteMediaAction(input: FormData | string) {
-  await requireAdminAccess("/admin/media");
+  const { context } = await requireAdminMutationAccess("/admin/media", "media.delete");
 
   const id = typeof input === "string" ? input.trim() : String(input.get("id") ?? "").trim();
 
-  if (!id) {
-    redirectWith("/admin/media", "error", "Media id missing.");
+  const idValidation = validateId(id, "Media id");
+  if (!idValidation.ok) {
+    redirectWith("/admin/media", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/media");
@@ -1514,16 +1623,16 @@ export async function deleteMediaAction(input: FormData | string) {
   }
 
   revalidatePath("/admin/media");
-  await logAudit(supabase, "media.delete", "media", id);
+  await logAudit(supabase, context, "media.delete", "media", id);
   redirectWith("/admin/media", "success", "Media deleted.");
 }
 
 export async function bulkDeleteMediaAction(formData: FormData) {
-  await requireAdminAccess("/admin/media");
+  const { context } = await requireAdminMutationAccess("/admin/media", "media.bulk_delete");
   const ids = getIds(formData);
-
-  if (!ids.length) {
-    redirectWith("/admin/media", "error", "Select at least one media item.");
+  const idValidation = validateIdList(ids, "media item");
+  if (!idValidation.ok) {
+    redirectWith("/admin/media", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/media");
@@ -1541,12 +1650,12 @@ export async function bulkDeleteMediaAction(formData: FormData) {
   }
 
   revalidatePath("/admin/media");
-  await logAudit(supabase, "media.bulk_delete", "media", null, { ids });
+  await logAudit(supabase, context, "media.bulk_delete", "media", null, { ids });
   redirectWith("/admin/media", "success", "Selected media deleted.");
 }
 
 export async function updateSiteSettingAction(formData: FormData) {
-  const { role } = await requireAdminAccess("/admin/settings");
+  const { role, context } = await requireAdminMutationAccess("/admin/settings", "setting.upsert");
 
   if (role !== "admin") {
     redirect("/admin/dashboard?error=insufficient-role");
@@ -1556,8 +1665,9 @@ export async function updateSiteSettingAction(formData: FormData) {
   const key = String(formData.get("key") ?? "").trim();
   const valueRaw = String(formData.get("value") ?? "").trim();
 
-  if (!key) {
-    redirectWith("/admin/settings", "error", "Setting key is required.");
+  const settingValidation = validateSettingPayload({ key });
+  if (!settingValidation.ok) {
+    redirectWith("/admin/settings", "error", settingValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/settings");
@@ -1584,20 +1694,21 @@ export async function updateSiteSettingAction(formData: FormData) {
 
   revalidatePath("/admin/settings");
   revalidatePath(`/admin/settings/${encodeURIComponent(key)}`);
-  await logAudit(supabase, "setting.upsert", "setting", key, { previousKey: previousKey || null });
+  await logAudit(supabase, context, "setting.upsert", "setting", key, { previousKey: previousKey || null });
   redirectWith("/admin/settings", "success", "Setting saved.");
 }
 
 export async function setFeaturedPlayerAlbumAction(albumId: string) {
-  const { role } = await requireAdminAccess("/admin/albums");
+  const { role, context } = await requireAdminMutationAccess("/admin/albums", "player.set_featured_album");
 
   if (role !== "admin") {
     redirect("/admin/dashboard?error=insufficient-role");
   }
 
   const id = albumId.trim();
-  if (!id) {
-    redirectWith("/admin/albums", "error", "Album id missing.");
+  const idValidation = validateId(id, "Album id");
+  if (!idValidation.ok) {
+    redirectWith("/admin/albums", "error", idValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/albums");
@@ -1615,12 +1726,12 @@ export async function setFeaturedPlayerAlbumAction(albumId: string) {
   revalidatePath("/music");
   revalidatePath("/admin/albums");
   revalidatePath("/admin/settings");
-  await logAudit(supabase, "player.set_featured_album", "setting", "player.featured_album_id", { albumId: id });
+  await logAudit(supabase, context, "player.set_featured_album", "setting", "player.featured_album_id", { albumId: id });
   redirectWith("/admin/albums", "success", "Featured player album updated.");
 }
 
 export async function deleteSiteSettingAction(input: FormData | string) {
-  const { role } = await requireAdminAccess("/admin/settings");
+  const { role, context } = await requireAdminMutationAccess("/admin/settings", "setting.delete");
 
   if (role !== "admin") {
     redirect("/admin/dashboard?error=insufficient-role");
@@ -1628,8 +1739,9 @@ export async function deleteSiteSettingAction(input: FormData | string) {
 
   const key = typeof input === "string" ? input.trim() : String(input.get("key") ?? "").trim();
 
-  if (!key) {
-    redirectWith("/admin/settings", "error", "Setting key missing.");
+  const settingValidation = validateSettingPayload({ key });
+  if (!settingValidation.ok) {
+    redirectWith("/admin/settings", "error", settingValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/settings");
@@ -1641,12 +1753,12 @@ export async function deleteSiteSettingAction(input: FormData | string) {
   }
 
   revalidatePath("/admin/settings");
-  await logAudit(supabase, "setting.delete", "setting", key);
+  await logAudit(supabase, context, "setting.delete", "setting", key);
   redirectWith("/admin/settings", "success", "Setting deleted.");
 }
 
 export async function bulkDeleteSiteSettingsAction(formData: FormData) {
-  const { role } = await requireAdminAccess("/admin/settings");
+  const { role, context } = await requireAdminMutationAccess("/admin/settings", "setting.bulk_delete");
 
   if (role !== "admin") {
     redirect("/admin/dashboard?error=insufficient-role");
@@ -1654,8 +1766,9 @@ export async function bulkDeleteSiteSettingsAction(formData: FormData) {
 
   const keys = getIds(formData);
 
-  if (!keys.length) {
-    redirectWith("/admin/settings", "error", "Select at least one setting.");
+  const keyValidation = validateSettingKeys(keys);
+  if (!keyValidation.ok) {
+    redirectWith("/admin/settings", "error", keyValidation.error);
   }
 
   const supabase = await getRequiredSupabase("/admin/settings");
@@ -1666,6 +1779,6 @@ export async function bulkDeleteSiteSettingsAction(formData: FormData) {
   }
 
   revalidatePath("/admin/settings");
-  await logAudit(supabase, "setting.bulk_delete", "setting", null, { keys });
+  await logAudit(supabase, context, "setting.bulk_delete", "setting", null, { keys });
   redirectWith("/admin/settings", "success", "Selected settings deleted.");
 }
