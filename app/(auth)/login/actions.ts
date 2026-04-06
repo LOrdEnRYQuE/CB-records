@@ -7,6 +7,11 @@ export async function signInAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "").trim();
   const next = String(formData.get("next") ?? "/admin/dashboard");
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  if (!isEmailValid || password.length < 8) {
+    redirect("/login?error=invalid-credentials");
+  }
 
   const supabase = await createSupabaseServerClient();
 
