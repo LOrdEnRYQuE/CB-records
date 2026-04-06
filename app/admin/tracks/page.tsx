@@ -6,6 +6,7 @@ import {
   createTrackAction,
   deleteTrackAction,
   importExternalTracksAction,
+  importReleaseFromLinkAction,
   importSharePlaylistAction,
 } from "@/app/admin/actions";
 import { AdminPagination } from "@/components/admin/pagination";
@@ -142,6 +143,40 @@ export default async function AdminTracksPage({ searchParams }: Props) {
         </p>
 
         <SubmitButton idleLabel="Add Track" pendingLabel="Adding..." className="btn-gold rounded-full px-4 py-2 md:col-span-3" />
+      </form>
+
+      <form action={importReleaseFromLinkAction} className="grid gap-3 rounded-2xl panel p-4 md:grid-cols-3">
+        <h2 className="text-lg font-semibold md:col-span-3">One-Link Smart Import</h2>
+        <p className="text-xs text-zinc-400 md:col-span-3">
+          Paste any release link (DistroKid/HyperFollow/Spotify/Apple/YouTube/etc). We extract what we can and create the track automatically.
+        </p>
+
+        <input
+          required
+          type="url"
+          name="sourceUrl"
+          placeholder="https://..."
+          className="field md:col-span-2"
+        />
+
+        <select name="albumId" className="field">
+          <option value="">Auto album (Singles)</option>
+          {albums.items.map((album) => (
+            <option key={album.id} value={album.id}>
+              {album.title}
+            </option>
+          ))}
+        </select>
+
+        <label className="field field-check text-sm md:col-span-3">
+          <input type="checkbox" name="isPublished" defaultChecked /> Published
+        </label>
+
+        <SubmitButton
+          idleLabel="Import From Link"
+          pendingLabel="Extracting..."
+          className="btn-gold rounded-full px-4 py-2 md:col-span-3"
+        />
       </form>
 
       <form action={importExternalTracksAction} className="grid gap-3 rounded-2xl panel p-4 md:grid-cols-3">

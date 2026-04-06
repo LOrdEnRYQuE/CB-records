@@ -154,6 +154,102 @@ function titleFromFileName(fileName: string) {
     .trim() || "Imported Track";
 }
 
+function decodeHtmlEntity(value: string) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function extractMetaContent(html: string, key: string) {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const patterns = [
+    new RegExp(`<meta[^>]+property=["']${escaped}["'][^>]+content=["']([^"']+)["']`, "i"),
+    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']${escaped}["']`, "i"),
+    new RegExp(`<meta[^>]+name=["']${escaped}["'][^>]+content=["']([^"']+)["']`, "i"),
+    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+name=["']${escaped}["']`, "i"),
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    const value = match?.[1]?.trim();
+    if (value) {
+      return decodeHtmlEntity(value);
+    }
+  }
+
+  return null;
+}
+
+async function fetchTextWithTimeout(url: string, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+      headers: {
+        "user-agent": "Mozilla/5.0 (compatible; ATTA-Importer/1.0)",
+      },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return { text: null as string | null, error: `Source URL returned ${response.status}.` };
+    }
+    return { text: await response.text(), error: null as string | null };
+  } catch {
+    return { text: null as string | null, error: "Could not fetch source URL metadata." };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function extractReleasePreview(sourceUrl: string) {
+  if (!isHttpUrl(sourceUrl)) {
+    return { error: "Invalid source URL.", title: null, streamUrl: null, releaseUrl: null, coverImageUrl: null };
+  }
+
+  if (isPlayableAudioUrl(sourceUrl)) {
+    return {
+      error: null as string | null,
+      title: titleFromFileName(fileNameFromUrl(sourceUrl)),
+      streamUrl: sourceUrl,
+      releaseUrl: null,
+      coverImageUrl: null,
+    };
+  }
+
+  const { text, error } = await fetchTextWithTimeout(sourceUrl);
+  if (error || !text) {
+    return { error: error ?? "Could not inspect source URL.", title: null, streamUrl: null, releaseUrl: sourceUrl, coverImageUrl: null };
+  }
+
+  const title =
+    extractMetaContent(text, "og:title") ??
+    extractMetaContent(text, "twitter:title") ??
+    text.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim() ??
+    titleFromUrl(sourceUrl);
+  const coverImageUrl =
+    extractMetaContent(text, "og:image") ??
+    extractMetaContent(text, "twitter:image") ??
+    null;
+
+  const urlMatches = text.match(/https?:\/\/[^\s"'<>]+/g) ?? [];
+  const directAudio = Array.from(
+    new Set(urlMatches.map((item) => item.trim()).filter((item) => isPlayableAudioUrl(item))),
+  );
+
+  return {
+    error: null as string | null,
+    title: title || titleFromUrl(sourceUrl),
+    streamUrl: directAudio[0] ?? null,
+    releaseUrl: directAudio[0] ? null : sourceUrl,
+    coverImageUrl: coverImageUrl && isHttpUrl(coverImageUrl) ? coverImageUrl : null,
+  };
+}
+
 async function extractAudioLinksFromSharePage(shareUrl: string) {
   const response = await fetch(shareUrl, {
     method: "GET",
@@ -386,6 +482,46 @@ async function getOrCreateDefaultArtistId(supabase: ServerSupabase) {
   }
 
   return { artistId: createdArtist?.id ?? null, error: null };
+}
+
+async function getOrCreateSinglesAlbumId(
+  supabase: ServerSupabase,
+  artistId: string,
+  coverImageUrl?: string | null,
+) {
+  const { data: existingAlbum } = await supabase
+    .from("albums")
+    .select("id, cover_image_url")
+    .eq("artist_id", artistId)
+    .ilike("title", "singles")
+    .limit(1)
+    .maybeSingle();
+
+  if (existingAlbum?.id) {
+    if (!existingAlbum.cover_image_url && coverImageUrl) {
+      await supabase.from("albums").update({ cover_image_url: coverImageUrl }).eq("id", existingAlbum.id);
+    }
+    return { albumId: existingAlbum.id, error: null as string | null };
+  }
+
+  const { data: created, error } = await supabase
+    .from("albums")
+    .insert({
+      title: "Singles",
+      slug: "singles",
+      artist_id: artistId,
+      cover_image_url: coverImageUrl ?? null,
+      description: "Auto-generated singles collection.",
+      is_published: true,
+    })
+    .select("id")
+    .single();
+
+  if (error || !created) {
+    return { albumId: null, error: error?.message ?? "Failed to create Singles album." };
+  }
+
+  return { albumId: created.id, error: null as string | null };
 }
 
 function normalizeMerchStatus(
@@ -744,6 +880,123 @@ export async function createTrackAction(formData: FormData) {
     hasReleaseUrl: Boolean(effectiveReleaseUrl),
   });
   redirectWith("/admin/tracks", "success", "Track created.");
+}
+
+export async function importReleaseFromLinkAction(formData: FormData) {
+  const { role, context } = await requireAdminMutationAccess("/admin/tracks", "track.import_release_link");
+
+  if (role === "media_manager") {
+    redirect("/admin/dashboard?error=insufficient-role");
+  }
+
+  const sourceUrl = String(formData.get("sourceUrl") ?? "").trim();
+  const selectedAlbumId = String(formData.get("albumId") ?? "").trim();
+  const isPublished = toBool(formData, "isPublished");
+
+  if (!isHttpUrl(sourceUrl)) {
+    redirectWith("/admin/tracks", "error", "Please paste a valid URL.");
+  }
+
+  const supabase = await getRequiredSupabase("/admin/tracks");
+  const preview = await extractReleasePreview(sourceUrl);
+
+  if (preview.error || !preview.title) {
+    redirectWith("/admin/tracks", "error", preview.error ?? "Could not extract data from URL.");
+  }
+
+  let albumId = selectedAlbumId;
+  if (albumId) {
+    const albumValidation = validateId(albumId, "Album id");
+    if (!albumValidation.ok) {
+      redirectWith("/admin/tracks", "error", albumValidation.error);
+    }
+  } else {
+    const { artistId, error: artistError } = await getOrCreateDefaultArtistId(supabase);
+    if (artistError || !artistId) {
+      redirectWith("/admin/tracks", "error", artistError ?? "Failed to resolve artist.");
+    }
+    const { albumId: autoAlbumId, error: albumError } = await getOrCreateSinglesAlbumId(
+      supabase,
+      artistId,
+      preview.coverImageUrl,
+    );
+    if (albumError || !autoAlbumId) {
+      redirectWith("/admin/tracks", "error", albumError ?? "Failed to resolve album.");
+    }
+    albumId = autoAlbumId;
+  }
+
+  const sourceType: "stream" | "external" = preview.streamUrl ? "stream" : "external";
+  const releaseUrl = preview.releaseUrl ?? sourceUrl;
+
+  const trackValidation = validateTrackPayload({
+    title: preview.title,
+    albumId,
+    sourceType,
+    streamUrl: preview.streamUrl ?? "",
+    releaseUrl,
+  });
+  if (!trackValidation.ok) {
+    redirectWith("/admin/tracks", "error", trackValidation.error);
+  }
+
+  const { data: existingTracks } = await supabase
+    .from("tracks")
+    .select("slug, track_number")
+    .eq("album_id", albumId);
+  const usedSlugs = new Set((existingTracks ?? []).map((track) => track.slug));
+  let slug = slugify(preview.title);
+  if (!slug) {
+    slug = "track";
+  }
+  let uniqueSlug = slug;
+  let suffix = 2;
+  while (usedSlugs.has(uniqueSlug)) {
+    uniqueSlug = `${slug}-${suffix}`;
+    suffix += 1;
+  }
+
+  const maxTrackNumber = (existingTracks ?? [])
+    .map((track) => track.track_number ?? 0)
+    .reduce((max, current) => Math.max(max, current), 0);
+  const nextTrackNumber = maxTrackNumber > 0 ? maxTrackNumber + 1 : null;
+
+  const { data: createdTrack, error: createError } = await supabase
+    .from("tracks")
+    .insert({
+      title: preview.title,
+      slug: uniqueSlug,
+      album_id: albumId,
+      audio_url: preview.streamUrl,
+      track_number: nextTrackNumber,
+      is_published: isPublished,
+    })
+    .select("id")
+    .single();
+
+  if (createError || !createdTrack) {
+    redirectWith("/admin/tracks", "error", createError?.message ?? "Failed to create track from URL.");
+  }
+
+  const linkError = await syncHyperFollowLink(supabase, {
+    trackId: createdTrack.id,
+    url: releaseUrl,
+  });
+  if (linkError) {
+    redirectWith("/admin/tracks", "error", linkError);
+  }
+
+  revalidatePath("/music");
+  revalidatePath("/admin/tracks");
+  revalidatePath("/admin/albums");
+  await logAudit(supabase, context, "track.import_release_link", "track", createdTrack.id, {
+    sourceUrl,
+    extractedTitle: preview.title,
+    sourceType,
+    albumId,
+    isPublished,
+  });
+  redirectWith("/admin/tracks", "success", `Imported "${preview.title}" from link.`);
 }
 
 export async function importExternalTracksAction(formData: FormData) {
