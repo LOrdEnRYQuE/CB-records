@@ -50,8 +50,29 @@ Production-ready foundation for the official **Cartieru' Bradet / ATTA AI Record
 3. Fill `.env.local` with your Supabase project values.
 4. Run the app:
    ```bash
+   npm run verify:setup
    npm run dev
    ```
+
+## Development readiness checks
+
+Before every release candidate run:
+
+```bash
+npm run verify:setup
+npm run check
+npm run build
+```
+
+Health endpoint for quick checks:
+
+```bash
+GET /api/health
+```
+
+Expected JSON:
+- `status: ok`
+- `services.supabasePublicConfig: configured | missing`
 
 ## Database setup (Supabase SQL editor)
 
@@ -71,3 +92,4 @@ Run:
 - Media uploads target Supabase Storage bucket `media-assets`.
 - Admin actions are implemented as Next.js Server Actions.
 - Admin includes an audit log page at `/admin/audit`.
+- Cloudflare free plan: keep `minify: true` in `wrangler.jsonc` and protect routes against bot traffic to reduce request burn.
