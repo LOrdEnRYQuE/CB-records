@@ -83,6 +83,21 @@ export default async function MusicPage() {
                   <p className="mt-1 text-2xl font-black">{streamTracks.length}</p>
                 </div>
               </div>
+
+              <div className="mt-5 rounded-2xl border border-white/10 bg-black/35 p-3">
+                <p className="text-xs uppercase tracking-widest text-gold-500">Quick Access</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <a href="#atta-main-player" className="rounded-full border border-white/15 px-3 py-1 text-xs text-zinc-200 hover:border-gold-500/70">
+                    Jump to Player
+                  </a>
+                  <a href="#atta-catalog" className="rounded-full border border-white/15 px-3 py-1 text-xs text-zinc-200 hover:border-gold-500/70">
+                    Open Catalog
+                  </a>
+                  <a href="#atta-albums" className="rounded-full border border-white/15 px-3 py-1 text-xs text-zinc-200 hover:border-gold-500/70">
+                    Browse Albums
+                  </a>
+                </div>
+              </div>
             </div>
 
             <div className="surface-subtle reveal-up reveal-delay-1 rounded-2xl p-5">
@@ -127,7 +142,7 @@ export default async function MusicPage() {
           </div>
         </section>
 
-        <section className="section-wrap section-split">
+        <section id="atta-main-player" className="section-wrap section-split">
           <MusicPlayer
             albums={player.albums}
             tracks={player.tracks}
@@ -136,11 +151,11 @@ export default async function MusicPage() {
           />
         </section>
 
-        <section className="section-wrap section-split">
+        <section id="atta-catalog" className="section-wrap section-split">
           <MusicCatalog tracks={player.tracks} albums={player.albums} />
         </section>
 
-        <section className="section-wrap section-split">
+        <section id="atta-albums" className="section-wrap section-split">
           {albums.length ? (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {albums.map((album) => (
